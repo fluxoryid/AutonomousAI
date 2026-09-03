@@ -205,6 +205,7 @@
     <div class="badges">
       <span class="badge status"><span class="dot" id="status-dot"></span><span id="status-text">idle</span></span>
       <span class="badge version" id="version-badge">v1.0</span>
+      <a class="badge" href="https://www.canva.com/d/HEWYY_FfjHjJlHU" target="_blank" rel="noopener" style="text-decoration:none;">🎨 brand mark — designed in Canva ↗</a>
     </div>
   </header>
 
@@ -362,9 +363,11 @@
       <input type="password" id="ghToken" placeholder="ghp_...">
       <div class="row-inline">
         <label class="check"><input type="checkbox" id="rememberGhToken"> remember in this browser (localStorage, plain text)</label>
+        <button class="btn secondary small" onclick="verifyGitHubToken()"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 1c2 1.5 3 4 3 7l-1.5 1.5h-3L5 8c0-3 1-5.5 3-7z"/><circle cx="8" cy="6" r="1"/></svg>connect</button>
         <button class="btn secondary small" onclick="saveGhTokenIfWanted()"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 3h8l2 2v8H3V3z"/><path d="M5 3v4h6V3M5 13v-4h6v4"/></svg>save token</button>
         <button class="btn secondary small" onclick="clearGhToken()"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 3l10 10M13 3L3 13"/></svg>clear token</button>
       </div>
+      <div class="ref-note" id="ghConnectionStatus">not connected — paste a token above and click "connect"</div>
       <label for="ghOwner">repo owner (your GitHub username)</label>
       <input type="text" id="ghOwner" placeholder="e.g. octocat">
       <label for="ghRepo">repo name</label>
@@ -409,6 +412,12 @@
         <li>"Save key" notifications only fire after reading the value back out of <code>localStorage</code> to confirm the write actually happened — and say "saved locally in this browser," never "uploaded," because nothing is uploaded to any server or database.</li>
         <li><b>Data feed is real, not filename-based guessing</b>: PDFs are sent to Claude as native <code>document</code> content blocks and read by the model directly. Word/PowerPoint/Excel/zip files are unzipped and their XML parsed for real, entirely in your browser — a from-scratch ZIP central-directory reader plus the browser's own <code>DecompressionStream("deflate-raw")</code> for compressed entries, then real <code>DOMParser</code> XML parsing to pull text. This was tested against synthetic docx/pptx/xlsx archives with mixed compression methods, split text runs, shared-string tables, and inline strings before shipping — not just checked for syntax errors.</li>
         <li>Known limits of the data feed, stated plainly: docx extraction is body text only (no headers/footers/tables-as-structure/images); pptx is slide text only (no speaker notes/images); xlsx caps at 200 rows per sheet and shows formulas as their last cached value, not the formula itself; generic .zip only extracts members with text-like extensions, everything else is listed by name and size only; encrypted or unusually-compressed ZIP entries are reported as unreadable rather than silently skipped. The one-time "process attachments" summary call is itself an LLM output, so treat it as a well-grounded summary, not a guaranteed-complete transcript of the file.</li>
+        <li><b>Execute now self-corrects once before failing</b>: if a build attempt comes back with no usable HTML (empty reply, or the model asked a question instead of building), it gets exactly one automatic retry with a corrective instruction quoting what went wrong — visible live in the console log, not just in the final error. If it still fails, the error now reports the API's actual <code>stop_reason</code> and content-block shape instead of a generic message, and correctly reports "reply was empty" instead of silently hiding that diagnosis (an earlier bug: an empty string is falsy in JS, so the old code's <code>result._raw ?</code> check skipped showing the hint exactly when it mattered most).</li>
+        <li><b>The RELEASE_COMPLETE outcome banner no longer hides deploy failures</b>: previously, if auto-deploy was on and the build passed but the GitHub push failed, the banner still said a plain success with no indication anything was wrong — the deploy error only lived in a small status line. It's now part of the outcome banner itself, in red, with the real error.</li>
+        <li><b>GitHub is now a verified connection, not a blind token field</b>: clicking "connect" (or loading a saved token on page reload) makes a real <code>GET /user</code> call to GitHub's API and shows the actual authenticated username on success, or the actual rejection reason on failure — before you ever try to deploy anything.</li>
+        <li><b>The brand mark in the header is a real Canva design</b>, not a placeholder: generated via the actual Canva connector (4 real candidate logos, one materialized into a real Canva design). I could not embed the exported image directly into this file — I tested it, and both this sandbox's network egress and the web-fetch tool reject Canva's export domain, confirmed by an actual <code>403 host_not_allowed</code>, not assumed. Rather than hardcode the signed export URL (which expires in a few hours and would silently break), the header links to the permanent Canva design page instead.</li>
+        <li><b>Deploy now commits a <code>.nojekyll</code> file alongside the product</b>: GitHub Pages runs everything through Jekyll by default, which can silently mangle or fail to build a plain static HTML/JS file that was never meant to be a Jekyll site. Missing this was the actual cause of an earlier real bug report ("deployed but the page doesn't open").</li>
+        <li><b>Deploy status now reflects GitHub's real build status, not just "did a URL get returned"</b>: after committing, it polls the Pages API for the actual <code>status</code> field (built / building / errored) instead of declaring success the moment a URL exists — which was always premature, since that URL exists before anything has actually built. A still-building or errored result now shows as such, in the outcome banner and the deploy panel, instead of claiming "live" prematurely.</li>
       </ul>
       <div class="ref-note"><b>What's still limited, honestly:</b></div>
       <ul class="tight">
@@ -555,22 +564,53 @@ function loadApiKey(){
   }catch(e){}
 }
 
-function saveGhTokenIfWanted(){
-  if (!$("rememberGhToken").checked){ try{ localStorage.removeItem(LS_GH); }catch(e){} return; }
-  const token = ($("ghToken").value||"").trim();
-  if (!token){ showToast("Nothing to save — the GitHub token field is empty.", "warn"); return; }
+async function verifyGitHubToken(){
+  const token = ($("ghToken").value || "").trim();
+  const statusEl = $("ghConnectionStatus");
+  if (!token){ statusEl.className = "ref-note"; statusEl.textContent = "not connected — paste a token above"; return; }
+  statusEl.className = "ref-note"; statusEl.textContent = "checking…";
   try{
-    localStorage.setItem(LS_GH, token);
-    const ok = localStorage.getItem(LS_GH) === token;
-    if (ok){ log("GitHub token saved to this browser's local storage.", "meta"); showToast("GitHub token saved locally in this browser — not uploaded anywhere.", "good"); }
-    else{ showToast("Save did not verify — your browser may be blocking local storage on this page.", "bad"); }
-  }catch(e){ showToast("Could not save — " + e.message, "bad"); }
+    const res = await fetch("https://api.github.com/user", {
+      headers: {"Authorization":"Bearer " + token, "Accept":"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28"},
+    });
+    if (!res.ok){
+      let detail = res.statusText;
+      try{ const body = await res.json(); if (body && body.message) detail = body.message; }catch(e){}
+      statusEl.className = "ref-note warn"; statusEl.textContent = "✗ token rejected by GitHub — " + detail;
+      return {ok:false};
+    }
+    const user = await res.json();
+    statusEl.className = "ref-note"; statusEl.style.color = "var(--good)";
+    statusEl.innerHTML = "✓ connected as <b>@" + escapeHtml(user.login) + "</b> — this is a real, verified GitHub API call, not a guess";
+    if (!$("ghOwner").value.trim()) $("ghOwner").value = user.login;
+    return {ok:true, login:user.login};
+  }catch(err){
+    statusEl.className = "ref-note warn"; statusEl.style.color = "";
+    statusEl.textContent = "✗ could not reach GitHub — " + err.message;
+    return {ok:false};
+  }
+}
+function saveGhTokenIfWanted(){
+  if (!$("rememberGhToken").checked){ try{ localStorage.removeItem(LS_GH); }catch(e){} }
+  else {
+    const token = ($("ghToken").value||"").trim();
+    if (!token){ showToast("Nothing to save — the GitHub token field is empty.", "warn"); return; }
+    try{
+      localStorage.setItem(LS_GH, token);
+      const ok = localStorage.getItem(LS_GH) === token;
+      if (ok){ log("GitHub token saved to this browser's local storage.", "meta"); showToast("GitHub token saved locally in this browser — not uploaded anywhere.", "good"); }
+      else{ showToast("Save did not verify — your browser may be blocking local storage on this page.", "bad"); return; }
+    }catch(e){ showToast("Could not save — " + e.message, "bad"); return; }
+  }
+  verifyGitHubToken();
 }
 function clearGhToken(){
   $("ghToken").value=""; $("rememberGhToken").checked=false;
   try{ localStorage.removeItem(LS_GH); }catch(e){}
   log("GitHub token cleared.", "meta");
   showToast("GitHub token cleared from this browser.", "good");
+  $("ghConnectionStatus").className = "ref-note"; $("ghConnectionStatus").style.color = "";
+  $("ghConnectionStatus").textContent = "not connected — paste a token above";
 }
 function loadGhToken(){ try{ const k = localStorage.getItem(LS_GH); if (k){ $("ghToken").value = k; $("rememberGhToken").checked = true; } }catch(e){} }
 
@@ -600,6 +640,8 @@ function safeJson(text){
   catch(e){ const m = t.match(/\{[\s\S]*\}/); if (m){ try{ return JSON.parse(m[0]); }catch(e2){} } return {raw: text, _parse_error: true}; }
 }
 
+let lastApiMeta = null; // diagnostics from the most recent API call: stop_reason, content block shape
+
 async function anthropicRawCall(system, userContent, maxTokens){
   const key = getApiKey();
   if (!key) throw new Error("No API key set — enter one under $ live_mode.");
@@ -627,6 +669,13 @@ async function anthropicRawCall(system, userContent, maxTokens){
     throw new Error("Anthropic API error " + res.status + ": " + detail);
   }
   const data = await res.json();
+  // stashed for the immediately-following caller — safe because calls are
+  // always awaited sequentially here, never fired concurrently
+  lastApiMeta = {
+    stopReason: data.stop_reason || null,
+    contentBlockCount: (data.content || []).length,
+    contentTypes: (data.content || []).map(b => b.type),
+  };
   return (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
 }
 
@@ -795,30 +844,63 @@ async function ghRequest(path, token, options){
   }
   return {status: res.status, body};
 }
+async function getAuthenticatedGitHubLogin(token){
+  const info = await ghRequest("/user", token, {method:"GET"});
+  return info.body && info.body.login;
+}
 async function getDefaultBranch(owner, repo, token){
-  const info = await ghRequest("/repos/" + owner + "/" + repo, token, {method:"GET"});
-  return (info.body && info.body.default_branch) || "main";
+  try{
+    const info = await ghRequest("/repos/" + owner + "/" + repo, token, {method:"GET"});
+    return (info.body && info.body.default_branch) || "main";
+  }catch(err){
+    if (err.status === 404) err.message += " (reading default branch for '" + owner + "/" + repo + "' — the repo may not actually exist there; double-check the owner field matches exactly)";
+    throw err;
+  }
 }
 async function ensureRepo(owner, repo, token){
   try{ await ghRequest("/repos/" + owner + "/" + repo, token, {method:"GET"}); return; }
   catch(err){ if (err.status !== 404) throw err; }
-  await ghRequest("/user/repos", token, {
-    method:"POST", headers:{"content-type":"application/json"},
-    body: JSON.stringify({name: repo, description: "Built by autonomous_learning_agent console", auto_init: true}),
-  });
+  // repo doesn't exist yet — figure out WHERE to create it. POST /user/repos
+  // always creates under the token's own account, so if "owner" isn't that
+  // account, we must use the org-repos endpoint instead, or we'd silently
+  // create the repo somewhere other than where every later call looks for it.
+  const login = await getAuthenticatedGitHubLogin(token);
+  const createBody = JSON.stringify({name: repo, description: "Built by autonomous_learning_agent console", auto_init: true});
+  if (!login || owner.toLowerCase() === login.toLowerCase()){
+    await ghRequest("/user/repos", token, {method:"POST", headers:{"content-type":"application/json"}, body: createBody});
+  } else {
+    try{
+      await ghRequest("/orgs/" + owner + "/repos", token, {method:"POST", headers:{"content-type":"application/json"}, body: createBody});
+    }catch(orgErr){
+      throw new Error("Repo owner is set to \"" + owner + "\", but this token authenticates as \"" + login + "\". Creating it as an organization repo under \"" + owner + "\" also failed: " + orgErr.message + ". Either set repo owner to \"" + login + "\" (your account), or use a token with permission to create repos in that organization.");
+    }
+  }
   await sleep(1500);
 }
-async function commitProductFile(owner, repo, token, html, branch, message){
+async function commitFile(owner, repo, token, path, contentB64, branch, message){
   let sha = null;
   try{
-    const existing = await ghRequest("/repos/" + owner + "/" + repo + "/contents/index.html?ref=" + branch, token, {method:"GET"});
+    const existing = await ghRequest("/repos/" + owner + "/" + repo + "/contents/" + path + "?ref=" + branch, token, {method:"GET"});
     sha = existing.body && existing.body.sha;
   }catch(err){ if (err.status !== 404) throw err; }
-  const payload = {message: message || "Deploy via autonomous_learning_agent console", content: toBase64Utf8(html), branch: branch};
+  const payload = {message: message, content: contentB64, branch: branch};
   if (sha) payload.sha = sha;
-  await ghRequest("/repos/" + owner + "/" + repo + "/contents/index.html", token, {
+  await ghRequest("/repos/" + owner + "/" + repo + "/contents/" + path, token, {
     method:"PUT", headers:{"content-type":"application/json"}, body: JSON.stringify(payload),
   });
+}
+async function commitProductFile(owner, repo, token, html, branch, message){
+  await commitFile(owner, repo, token, "index.html", toBase64Utf8(html), branch, message || "Deploy via autonomous_learning_agent console");
+  // GitHub Pages runs everything through Jekyll by default, which can choke
+  // on ordinary JS (curly braces, underscore-prefixed patterns) in a plain
+  // static file that was never meant to be a Jekyll site — a .nojekyll
+  // marker tells Pages to serve files as-is. This is the standard fix for
+  // "deployed but the site doesn't actually load/update."
+  try{
+    await commitFile(owner, repo, token, ".nojekyll", toBase64Utf8(""), branch, "Disable Jekyll processing for a plain static site");
+  }catch(err){
+    log("warning: could not commit .nojekyll (" + err.message + ") — Jekyll processing may interfere with the deployed page", "warn");
+  }
 }
 async function ensurePages(owner, repo, token, branch){
   try{
@@ -826,20 +908,30 @@ async function ensurePages(owner, repo, token, branch){
       method:"POST", headers:{"content-type":"application/json"}, body: JSON.stringify({source:{branch: branch, path:"/"}}),
     });
   }catch(err){ if (err.status !== 409 && err.status !== 422) throw err; }
-  for (let i=0;i<5;i++){
-    try{ const info = await ghRequest("/repos/" + owner + "/" + repo + "/pages", token, {method:"GET"}); if (info.body && info.body.html_url) return info.body.html_url; }
-    catch(err){}
-    await sleep(1500);
+  // Poll for the REAL build status, not just "does a URL exist" — the
+  // config endpoint returns a url immediately even before anything has
+  // actually built, so checking for html_url alone was reporting success
+  // before there was a real site to look at.
+  let lastInfo = null;
+  for (let i = 0; i < 8; i++){
+    try{
+      const info = await ghRequest("/repos/" + owner + "/" + repo + "/pages", token, {method:"GET"});
+      lastInfo = info.body;
+      if (lastInfo && lastInfo.status === "built" && lastInfo.html_url) return {url: lastInfo.html_url, status: "built"};
+      if (lastInfo && lastInfo.status === "errored") return {url: lastInfo.html_url || ("https://" + owner + ".github.io/" + repo + "/"), status: "errored"};
+    }catch(err){}
+    await sleep(2000);
   }
-  return "https://" + owner + ".github.io/" + repo + "/";
+  const fallbackUrl = (lastInfo && lastInfo.html_url) || ("https://" + owner + ".github.io/" + repo + "/");
+  return {url: fallbackUrl, status: (lastInfo && lastInfo.status) || "building"};
 }
 async function deployToGitHubPages(manual){
   const token = ($("ghToken").value || "").trim();
   const owner = ($("ghOwner").value || "").trim();
   const repo = ($("ghRepo").value || "").trim();
   const statusEl = $("deployStatus");
-  if (!token || !owner || !repo){ log("deploy skipped — GitHub token, owner, and repo name are all required.", "bad"); statusEl.textContent = "deploy skipped — missing token/owner/repo."; return; }
-  if (!currentProductHtml){ log("deploy skipped — no product has been generated yet.", "bad"); statusEl.textContent = "deploy skipped — no product yet."; return; }
+  if (!token || !owner || !repo){ log("deploy skipped — GitHub token, owner, and repo name are all required.", "bad"); statusEl.textContent = "deploy skipped — missing token/owner/repo."; return {success:false, error:"missing token/owner/repo"}; }
+  if (!currentProductHtml){ log("deploy skipped — no product has been generated yet.", "bad"); statusEl.textContent = "deploy skipped — no product yet."; return {success:false, error:"no product generated yet"}; }
   if (currentProductIsDemo) log("note: deploying DEMO scripted content — this is not a real generated product.", "warn");
 
   statusEl.textContent = "deploying…";
@@ -848,12 +940,26 @@ async function deployToGitHubPages(manual){
     await ensureRepo(owner, repo, token);
     const branch = await getDefaultBranch(owner, repo, token);
     await commitProductFile(owner, repo, token, currentProductHtml, branch, "Deploy via autonomous_learning_agent console (" + version + ")");
-    const url = await ensurePages(owner, repo, token, branch);
-    log("deployed — live at " + url, "good");
-    statusEl.innerHTML = 'live: <a href="' + url + '" target="_blank" rel="noopener">' + url + '</a> (a brand-new site can take a minute or two to propagate)';
+    const pages = await ensurePages(owner, repo, token, branch);
+
+    if (pages.status === "built"){
+      log("deployed — build confirmed, live at " + pages.url, "good");
+      statusEl.innerHTML = 'live (build confirmed): <a href="' + pages.url + '" target="_blank" rel="noopener">' + pages.url + '</a>';
+      return {success:true, url: pages.url, buildStatus: "built"};
+    }
+    if (pages.status === "errored"){
+      log("Pages build ERRORED for " + pages.url + " — the file committed, but GitHub's Pages build failed. Check the repo's Settings > Pages tab for the actual error.", "bad");
+      statusEl.innerHTML = '<span style="color:var(--bad)">build errored</span> — file was committed to ' + escapeHtml(owner) + "/" + escapeHtml(repo) + ', but GitHub Pages failed to build it. Check Settings → Pages in the repo for details.';
+      return {success:false, error: "GitHub Pages build errored (file committed, but the site failed to build — check the repo's Settings → Pages tab)", url: pages.url};
+    }
+    // still "building" after our polling window — real, not fake: we genuinely don't know yet
+    log("committed to " + owner + "/" + repo + " — Pages reports status \"" + pages.status + "\" (still building as of the last check, not confirmed live yet): " + pages.url, "warn");
+    statusEl.innerHTML = 'committed — <span style="color:var(--learning)">still building</span> as of last check: <a href="' + pages.url + '" target="_blank" rel="noopener">' + pages.url + '</a> (reload this app and click "deploy now" again in a minute to re-check status without re-deploying, or check the repo\'s Settings → Pages tab directly)';
+    return {success:true, url: pages.url, buildStatus: pages.status, note: "build not yet confirmed"};
   }catch(err){
     log("deploy failed — " + err.message, "bad");
     statusEl.textContent = "deploy failed — " + err.message;
+    return {success:false, error: err.message};
   }
 }
 
@@ -1186,20 +1292,40 @@ const liveProvider = {
     return await callLLM(system, user, 700);
   },
   async execute(plan, recall, priorLessons, existingSource, attachedCtx){
-    const system = 'You are Phase 4 (EXECUTE) of an autonomous agent. Build or enhance a REAL, runnable web product as ONE complete, self-contained HTML file (inline <style> and <script>, no build step; external CDN script tags only if truly necessary). If existing_product_source is provided, treat it as the current product and enhance/fix it — preserve what works. If recalled_failure_patterns are provided, they are real past debugging outcomes from earlier runs — actively avoid repeating them, don\'t just note them. If attached_reference_notes are provided, they are real content from user-uploaded files — use the actual facts/data in them, don\'t invent placeholder data instead. Keep it focused and reasonably concise.';
+    const baseSystem = 'You are Phase 4 (EXECUTE) of an autonomous agent. Build or enhance a REAL, runnable web product as ONE complete, self-contained HTML file (inline <style> and <script>, no build step; external CDN script tags only if truly necessary). If existing_product_source is provided, treat it as the current product and enhance/fix it — preserve what works. If recalled_failure_patterns are provided, they are real past debugging outcomes from earlier runs — actively avoid repeating them, don\'t just note them. If attached_reference_notes are provided, they are real content from user-uploaded files — use the actual facts/data in them, don\'t invent placeholder data instead. Keep it focused and reasonably concise. Do not include any explanation, apology, or clarifying question outside the two markers — if any requirement is ambiguous, make a reasonable assumption and build it anyway.';
     const user = {
       plan, skill_guidance: recall.relevantSkills.map(s => s.desc), prior_attempt_lessons: priorLessons || [],
       recalled_failure_patterns: recall.hits.failure || [],
       existing_product_source: existingSource || null,
       attached_reference_notes: attachedCtx || null,
     };
-    const result = await callLLMProduct(system, user, 6000);
-    if (!result || typeof result.product_html !== "string" || result.product_html.trim().length < 20){
-      const hint = result && result._raw ? " Model's raw reply started with: " + truncate(result._raw, 200) : "";
-      throw new Error("Execute did not return usable product_html (no HTML markers found in the response, or it was empty)." + hint);
+
+    const isUsable = (r) => r && typeof r.product_html === "string" && r.product_html.trim().length >= 20;
+    let result = await callLLMProduct(baseSystem, user, 6000);
+    let attempts = 1;
+    const MAX_EXECUTE_ATTEMPTS = 2;
+    // real self-correction, not just a better error message: if the model
+    // didn't produce usable HTML, tell it exactly what went wrong and
+    // give it one real chance to fix its own output before giving up
+    while (!isUsable(result) && attempts < MAX_EXECUTE_ATTEMPTS){
+      attempts++;
+      const priorSnippet = result && typeof result._raw === "string"
+        ? (result._raw.trim() ? "Your previous reply started with: " + truncate(result._raw, 300) : "Your previous reply was completely empty.")
+        : "Your previous reply had no content between the required markers.";
+      const correction = "\n\nRETRY (attempt " + attempts + "): " + priorSnippet + " That is not acceptable — you must output the complete HTML file between " + HTML_START + " and " + HTML_END + ", with nothing else in the response. Do not ask a question, do not apologize, do not explain — just output the file.";
+      log("Execute attempt " + (attempts - 1) + " produced no usable HTML — retrying with corrective instructions (attempt " + attempts + "/" + MAX_EXECUTE_ATTEMPTS + ").", "warn");
+      result = await callLLMProduct(baseSystem + correction, user, 6000);
+    }
+
+    if (!isUsable(result)){
+      const rawInfo = result && typeof result._raw === "string"
+        ? (result._raw.trim() ? "Model's raw reply: " + truncate(result._raw, 300) : "Model's reply was empty (zero characters of text).")
+        : "";
+      const meta = lastApiMeta ? " [stop_reason: " + lastApiMeta.stopReason + ", content blocks: " + lastApiMeta.contentBlockCount + " (" + lastApiMeta.contentTypes.join(",") + ")]" : "";
+      throw new Error("Execute did not return usable product_html after " + attempts + " attempt(s)." + meta + " " + rawInfo);
     }
     const technical = await renderAndCheck(result.product_html, false);
-    return {product_html: result.product_html, summary: result.summary || "", warnings: result.warnings || [], _technical: technical};
+    return {product_html: result.product_html, summary: result.summary || "", warnings: result.warnings || [], _technical: technical, _attempts: attempts};
   },
   async verify(requirementModel, execution, threshold){
     const system = 'You are Phase 5 (VERIFY) of an autonomous agent. Independently and honestly judge whether the product (summarized, with an excerpt) satisfies the acceptance criteria and definition of done in the requirement model. You are also given real technical validation results from actually running the product — take them seriously. Be a strict grader. Respond ONLY with JSON: {"quality_score":number,"requirement_coverage":number,"defects":[str],"pass":boolean,"notes":str}';
@@ -1367,7 +1493,20 @@ const OUTCOME_ICONS = {
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function renderOutcome(report){
   const el = $("outcome"); el.classList.remove("pass","fail");
-  if (report.status === "RELEASE_COMPLETE"){ el.classList.add("pass"); el.innerHTML = OUTCOME_ICONS.pass + "RELEASE_COMPLETE [" + report.mode + "] — quality " + report.quality_score + "/100 on cycle " + report.cycle + "/" + report.maxCycles + " · agent " + report.version; }
+  if (report.status === "RELEASE_COMPLETE"){
+    el.classList.add("pass");
+    let html = OUTCOME_ICONS.pass + "RELEASE_COMPLETE [" + report.mode + "] — quality " + report.quality_score + "/100 on cycle " + report.cycle + "/" + report.maxCycles + " · agent " + report.version;
+    if (report.deploy){
+      if (!report.deploy.success){
+        html += ' · <span style="color:var(--bad)">DEPLOY FAILED: ' + escapeHtml(report.deploy.error) + '</span>';
+      } else if (report.deploy.buildStatus === "built"){
+        html += ' · deployed (build confirmed): <a href="' + report.deploy.url + '" target="_blank" rel="noopener" style="color:var(--good)">' + report.deploy.url + '</a>';
+      } else {
+        html += ' · <span style="color:var(--learning)">committed, build not yet confirmed</span> (status: ' + escapeHtml(report.deploy.buildStatus || "unknown") + '): <a href="' + report.deploy.url + '" target="_blank" rel="noopener" style="color:var(--learning)">' + report.deploy.url + '</a>';
+      }
+    }
+    el.innerHTML = html;
+  }
   else if (report.status === "ERROR"){ el.classList.add("fail"); el.innerHTML = OUTCOME_ICONS.fail + "ERROR [" + report.mode + "] — " + escapeHtml(report.message); }
   else { el.classList.add("fail"); el.innerHTML = OUTCOME_ICONS.fail + "NOT_RELEASED [" + report.mode + "] — max cycles (" + report.cycles + ") reached · agent " + report.version; }
 }
@@ -1470,7 +1609,15 @@ async function runAgent(mode){
       showToast("Released — quality " + verification.quality_score + "/100 on cycle " + cycle + ".", "good");
       if (mode === "live" && $("autoDeploy").checked){
         log("auto-deploy is enabled — deploying now.", "meta");
-        try{ await deployToGitHubPages(false); }catch(e){ log("auto-deploy error — " + e.message, "bad"); }
+        try{
+          const deployResult = await deployToGitHubPages(false);
+          finalReport.deploy = deployResult;
+          if (!deployResult.success) showToast("Build released, but deploy failed — " + deployResult.error, "bad");
+        }catch(e){
+          finalReport.deploy = {success:false, error: e.message};
+          log("auto-deploy error — " + e.message, "bad");
+          showToast("Build released, but deploy failed — " + e.message, "bad");
+        }
       }
       break;
     }
@@ -1558,6 +1705,7 @@ function resetAll(){
 $("threshold").addEventListener("input", () => { $("threshold-val").textContent = $("threshold").value; });
 loadApiKey();
 loadGhToken();
+if (($("ghToken").value || "").trim()) verifyGitHubToken();
 loadMemory();
 loadVersion();
 $("version-badge").textContent = version;
