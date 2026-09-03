@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>autonomous_learning_agent :: console</title>
+<style>
+  :root{
+    --bg:#0A0E17; --panel:#111826; --panel-alt:#0D1420; --border:#232C3D;
+    --text:#E7ECF3; --text-dim:#8B97AC; --forward:#49D3C4; --learning:#F2A65A;
+    --good:#5FDD8E; --bad:#F1715F; --gate:#C9A6FF;
+    --mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:14px;line-height:1.5;padding:28px 20px 60px;}
+  a{color:var(--forward);}
+  .wrap{max-width:1180px;margin:0 auto;}
+
+  header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:18px;margin-bottom:22px;}
+  header h1{font-size:17px;margin:0 0 6px;font-weight:700;letter-spacing:.2px;}
+  header h1 .prompt{color:var(--forward);}
+  header p{margin:0;color:var(--text-dim);font-size:12px;max-width:680px;}
+  .badges{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .badge{border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;color:var(--text-dim);white-space:nowrap;}
+  .badge.version{color:var(--forward);border-color:var(--forward);}
+  .badge.status{display:flex;align-items:center;gap:6px;}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--text-dim);}
+  .dot.busy{background:var(--learning);box-shadow:0 0 8px var(--learning);animation:blink 1s infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+  section{margin-bottom:26px;}
+  .section-title{font-size:12px;color:var(--text-dim);margin:0 0 12px;display:flex;align-items:center;gap:8px;}
+  .section-title .prompt{color:var(--forward);}
+
+  .sources{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px;}
+  .source-chip{border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--text-dim);flex:1 1 260px;}
+  .source-chip b{color:var(--text);display:block;font-size:11.5px;margin-bottom:2px;}
+
+  .diagram-legend{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px;font-size:11px;color:var(--text-dim);}
+  .diagram-legend span{display:inline-flex;align-items:center;gap:6px;}
+  .legend-dot{width:9px;height:9px;border-radius:2px;display:inline-block;}
+  .loop-diagram{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:var(--panel-alt);padding:20px 20px 10px;}
+  .loop-row{display:flex;align-items:stretch;min-width:1040px;}
+  .arrow{flex:0 0 26px;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:16px;}
+  .node{flex:0 0 132px;border:1px solid var(--border);border-radius:8px;background:var(--panel);padding:10px 8px;text-align:center;transition:box-shadow .25s, border-color .25s, opacity .25s;position:relative;}
+  .node .n{font-size:10px;color:var(--text-dim);}
+  .node .l{font-weight:700;font-size:12.5px;margin-top:1px;}
+  .node .s{font-size:9.5px;color:var(--text-dim);margin-top:3px;}
+  .node.arc-forward{border-top:2px solid var(--forward);}
+  .node.arc-learning{border-top:2px solid var(--learning);}
+  .node.active{box-shadow:0 0 0 1px currentColor, 0 0 20px -4px currentColor;animation:pulse 1s ease-in-out infinite;}
+  .node.arc-forward.active{color:var(--forward);}
+  .node.arc-learning.active{color:var(--learning);}
+  .node.done{opacity:.5;}
+  .node.fail{border-color:var(--bad);color:var(--bad);opacity:1;}
+  @keyframes pulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.4)}}
+  .node.gate{flex:0 0 108px;clip-path:polygon(14% 0,86% 0,100% 50%,86% 100%,14% 100%,0 50%);border-color:var(--gate);color:var(--gate);}
+  .node.gate .l{font-size:12px;}
+  .node.gate.active{color:var(--gate);box-shadow:0 0 0 1px var(--gate),0 0 20px -4px var(--gate);animation:pulse 1s ease-in-out infinite;}
+  .node.gate.pass{border-color:var(--good);color:var(--good);}
+  .node.gate.fail{border-color:var(--bad);color:var(--bad);}
+  .node.release{border-color:var(--border);}
+  .node.release.pass{border-color:var(--good);color:var(--good);box-shadow:0 0 20px -6px var(--good);}
+  .loop-branch{display:flex;justify-content:flex-end;gap:34px;padding:8px 24px;font-size:10.5px;color:var(--text-dim);min-width:1040px;}
+  .loop-branch span{transition:color .25s;}
+  .loop-branch span.lit-fail{color:var(--bad);}
+  .loop-branch span.lit-loop{color:var(--learning);}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media (max-width:880px){.grid2{grid-template-columns:1fr;}}
+  .panel{border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:16px;}
+
+  label{display:block;font-size:11px;color:var(--text-dim);margin:12px 0 5px;}
+  label:first-child{margin-top:0;}
+  label.inline-note{display:inline;color:var(--text-dim);font-size:10px;}
+  textarea,input[type=text],input[type=number],input[type=password]{
+    width:100%;background:var(--panel-alt);border:1px solid var(--border);color:var(--text);
+    border-radius:6px;padding:8px;font-family:var(--mono);font-size:12px;
+  }
+  textarea{resize:vertical;min-height:52px;}
+  input[type=range]{width:100%;accent-color:var(--forward);}
+  .row-inline{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;align-items:center;}
+  .check{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text-dim);}
+  .actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;}
+  .btn{background:var(--forward);color:#04211D;border:none;padding:10px 18px;border-radius:6px;font-weight:700;font-family:var(--mono);font-size:12px;cursor:pointer;}
+  .btn.secondary{background:transparent;border:1px solid var(--border);color:var(--text);}
+  .btn.small{padding:6px 12px;font-size:11px;}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+
+  .mode-banner{border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:11px;margin-bottom:14px;color:var(--text-dim);}
+  .mode-banner.live{border-color:var(--forward);color:var(--forward);}
+  .mode-banner.demo{border-color:var(--learning);color:var(--learning);}
+
+  .outcome{margin-top:16px;padding:12px;border-radius:8px;border:1px solid var(--border);font-size:12px;color:var(--text-dim);}
+  .outcome.pass{border-color:var(--good);color:var(--good);background:rgba(95,221,142,.07);}
+  .outcome.fail{border-color:var(--bad);color:var(--bad);background:rgba(241,113,95,.07);}
+
+  .console{background:var(--panel-alt);border:1px solid var(--border);border-radius:8px;padding:12px;height:430px;overflow-y:auto;font-size:11.5px;}
+  .log-line{color:var(--text-dim);padding:2px 0;}
+  .log-line.tone-good{color:var(--good);}
+  .log-line.tone-bad{color:var(--bad);}
+  .log-line.tone-warn{color:var(--learning);}
+  .log-line.tone-meta{color:var(--text-dim);font-style:italic;}
+  .log-entry{margin:8px 0;padding:8px 10px;border-left:2px solid var(--border);background:rgba(255,255,255,.02);border-radius:0 6px 6px 0;}
+  .log-entry.arc-forward{border-left-color:var(--forward);}
+  .log-entry.arc-learning{border-left-color:var(--learning);}
+  .log-title{font-weight:700;font-size:11.5px;margin-bottom:5px;color:var(--text);}
+  .kv{display:flex;gap:8px;font-size:10.8px;padding:1px 0;}
+  .kv .k{flex:0 0 132px;color:var(--text-dim);opacity:.85;}
+  .kv .v{color:var(--text);word-break:break-word;}
+
+  .mem-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;}
+  .mem-card{border:1px solid var(--border);border-radius:8px;padding:10px;background:var(--panel-alt);}
+  .mem-card .count{font-size:22px;font-weight:700;color:var(--forward);}
+  .mem-card .name{font-size:11px;color:var(--text);margin-top:2px;}
+  .mem-card .desc{font-size:9.5px;color:var(--text-dim);margin-top:6px;line-height:1.4;min-height:34px;}
+  .mem-card .preview{font-size:10.5px;margin-top:6px;color:var(--text-dim);border-top:1px solid var(--border);padding-top:6px;}
+
+  .skill-card{border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;transition:border-color .3s, background .3s;}
+  .skill-card.active{border-color:var(--forward);background:rgba(73,211,196,.07);}
+  .skill-card .name{font-weight:700;font-size:12px;}
+  .skill-card .desc{font-size:10.8px;color:var(--text-dim);margin-top:4px;}
+  .orch-badge{border:1px dashed var(--gate);border-radius:8px;padding:10px;font-size:10.8px;color:var(--gate);margin-top:4px;}
+
+  iframe#previewFrame{width:100%;height:340px;border:1px solid var(--border);border-radius:8px;background:#fff;}
+
+  details{border:1px solid var(--border);border-radius:10px;padding:14px 16px;background:var(--panel);}
+  summary{cursor:pointer;font-size:12px;color:var(--text);}
+  summary .prompt{color:var(--forward);}
+  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:11px;}
+  th,td{border:1px solid var(--border);padding:6px 8px;text-align:left;vertical-align:top;}
+  th{color:var(--text-dim);font-weight:600;}
+  .ref-note{font-size:11px;color:var(--text-dim);margin-top:12px;line-height:1.6;}
+  .ref-note.warn{color:var(--learning);}
+  ul.tight{margin:8px 0;padding-left:18px;font-size:11px;color:var(--text-dim);line-height:1.6;}
+
+  footer{margin-top:30px;font-size:10.5px;color:var(--text-dim);text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1><span class="prompt">$</span> autonomous_learning_agent --console</h1>
+      <p>Builds or enhances a real, single-file web product. In live mode: Claude writes it, this page actually runs it in a sandboxed frame and captures real runtime errors, Verify combines that real signal with Claude's judgment, and on release you can push it live to GitHub Pages with your own token. Offline demo mode is the old scripted stub, kept for comparison and always labeled.</p>
+    </div>
+    <div class="badges">
+      <span class="badge status"><span class="dot" id="status-dot"></span><span id="status-text">idle</span></span>
+      <span class="badge version" id="version-badge">v1.0</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="sources">
+      <div class="source-chip"><b>autonomous-agent (Python pkg)</b>10 phase modules + skill registry + memory router.</div>
+      <div class="source-chip"><b>Autonomous_Learning_AI_Agent_v1</b>ModelProvider pattern — this file has a real <code>liveProvider</code> and a labeled <code>demoProvider</code>.</div>
+      <div class="source-chip"><b>architecture.md</b>memory subsystem + phase/arc/gate table — reference section below.</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="panel">
+      <div class="section-title"><span class="prompt">$</span> live_mode — Anthropic API key</div>
+      <label for="apiKey">API key (used only for direct browser calls to api.anthropic.com; never sent anywhere else)</label>
+      <input type="password" id="apiKey" placeholder="sk-ant-...">
+      <label for="workspaceId">workspace ID <label class="inline-note">(only required if your key is "identity-linked" — the API will tell you via a 400 error if you need this)</label></label>
+      <input type="text" id="workspaceId" placeholder="wrkspc-...">
+      <div class="row-inline">
+        <label class="check"><input type="checkbox" id="rememberKey"> remember in this browser (localStorage, plain text)</label>
+        <button class="btn secondary small" onclick="saveApiKeyIfWanted()">save key</button>
+        <button class="btn secondary small" onclick="clearApiKey()">clear key</button>
+      </div>
+      <label for="modelInput">model</label>
+      <input type="text" id="modelInput" list="modelList" value="claude-sonnet-5">
+      <datalist id="modelList">
+        <option value="claude-sonnet-5"><option value="claude-opus-5">
+        <option value="claude-haiku-4-5-20251001"><option value="claude-fable-5-1">
+      </datalist>
+      <div class="ref-note warn">If live calls fail with a network/CORS error, your browser or network is blocking direct API calls — try a different network, or use offline demo mode instead.</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title"><span class="prompt">$</span> loop_diagram</div>
+    <div class="diagram-legend">
+      <span><i class="legend-dot" style="background:var(--forward)"></i> forward arc — build it</span>
+      <span><i class="legend-dot" style="background:var(--learning)"></i> learning arc — fix & improve it</span>
+      <span><i class="legend-dot" style="background:var(--gate)"></i> decision gate</span>
+    </div>
+    <div class="loop-diagram">
+      <div class="loop-row">
+        <div class="node arc-forward" id="node-1"><div class="n">1</div><div class="l">Understand</div><div class="s">Goal & Context</div></div>
+        <div class="arrow">→</div>
+        <div class="node arc-forward" id="node-2"><div class="n">2</div><div class="l">Recall</div><div class="s">Memory & Skills</div></div>
+        <div class="arrow">→</div>
+        <div class="node arc-forward" id="node-3"><div class="n">3</div><div class="l">Plan</div><div class="s">Task Breakdown</div></div>
+        <div class="arrow">→</div>
+        <div class="node arc-forward" id="node-4"><div class="n">4</div><div class="l">Execute</div><div class="s">Build Product</div></div>
+        <div class="arrow">→</div>
+        <div class="node arc-forward" id="node-5"><div class="n">5</div><div class="l">Verify</div><div class="s">Run & Grade</div></div>
+        <div class="arrow">→</div>
+        <div class="node gate" id="node-gate"><div class="l">PASS?</div></div>
+        <div class="arrow">→</div>
+        <div class="node release" id="node-release"><div class="n">🚀</div><div class="l">Release</div></div>
+      </div>
+      <div class="loop-branch">
+        <span id="branch-fail">✗ no — reflect (phase 6)</span>
+        <span id="branch-loop">↻ remember → loops to phase 1</span>
+      </div>
+      <div class="loop-row">
+        <div class="node arc-learning" id="node-10"><div class="n">10</div><div class="l">Remember</div><div class="s">Persist Memory</div></div>
+        <div class="arrow">←</div>
+        <div class="node arc-learning" id="node-9"><div class="n">9</div><div class="l">Evolve</div><div class="s">Validate & Upgrade</div></div>
+        <div class="arrow">←</div>
+        <div class="node arc-learning" id="node-8"><div class="n">8</div><div class="l">Experiment</div><div class="s">Improve</div></div>
+        <div class="arrow">←</div>
+        <div class="node arc-learning" id="node-7"><div class="n">7</div><div class="l">Learn</div><div class="s">Extract Lesson</div></div>
+        <div class="arrow">←</div>
+        <div class="node arc-learning" id="node-6"><div class="n">6</div><div class="l">Reflect</div><div class="s">Root Cause</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="panel">
+      <div class="section-title"><span class="prompt">$</span> run_config — build or enhance a product</div>
+
+      <label for="goal">goal — what to build or change</label>
+      <textarea id="goal" placeholder="e.g. Build a small expense splitter for a group trip">Build a single-page tip calculator: enter a bill amount and party size, choose a tip percent, show each person's share.</textarea>
+
+      <label for="constraints">constraints (comma-separated, optional)</label>
+      <input type="text" id="constraints" placeholder="e.g. no external libraries, mobile-friendly">
+
+      <label for="existingSource">existing product to enhance (optional — paste a single-file HTML product; leave blank to build new)</label>
+      <textarea id="existingSource" placeholder="<!-- paste an existing single-file HTML product here to enhance it -->" style="min-height:80px"></textarea>
+
+      <label for="maxCycles">max cycles</label>
+      <input type="number" id="maxCycles" min="1" max="5" value="2">
+
+      <label for="threshold">quality threshold — <span id="threshold-val">80</span>% (real runtime errors force a fail regardless of this score)</label>
+      <input type="range" id="threshold" min="30" max="99" value="80">
+
+      <div class="row-inline">
+        <label class="check"><input type="checkbox" id="forceFail"> force first cycle to fail <label class="inline-note">(demo mode only)</label></label>
+        <label class="check"><input type="checkbox" id="fastMode"> fast mode (demo animation only)</label>
+      </div>
+
+      <div class="actions">
+        <button class="btn" id="runLiveBtn" onclick="runAgent('live')">run live (real Claude)</button>
+        <button class="btn secondary" id="runDemoBtn" onclick="runAgent('demo')">run offline demo (scripted)</button>
+        <button class="btn secondary" id="resetBtn" onclick="resetAll()">reset memory</button>
+      </div>
+
+      <div class="mode-banner" id="modeBanner">no run yet</div>
+      <div class="outcome" id="outcome">press "run live" for a real run, or "run offline demo" to see the old scripted version.</div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title"><span class="prompt">$</span> console_log</div>
+      <div class="console" id="log"></div>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="panel">
+      <div class="section-title"><span class="prompt">$</span> live_preview — the actual product, actually running</div>
+      <iframe id="previewFrame" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe>
+      <div class="ref-note" id="previewStatus">no product generated yet</div>
+      <div class="actions">
+        <button class="btn secondary small" onclick="downloadProduct()">download product file</button>
+        <button class="btn secondary small" onclick="openPreviewNewTab()">open in new tab</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title"><span class="prompt">$</span> deploy — GitHub Pages (optional, real, off by default)</div>
+      <div class="ref-note">A token here lets this page create/update a public GitHub repo under your account via the real GitHub REST API and turn on Pages for it — nothing here is simulated. Requires a classic PAT with the "repo" scope, or a fine-grained token with Contents + Pages write access on the target repo. Assumes the repo's default branch supports Pages.</div>
+      <label for="ghToken">GitHub personal access token</label>
+      <input type="password" id="ghToken" placeholder="ghp_...">
+      <div class="row-inline">
+        <label class="check"><input type="checkbox" id="rememberGhToken"> remember in this browser (localStorage, plain text)</label>
+        <button class="btn secondary small" onclick="saveGhTokenIfWanted()">save token</button>
+        <button class="btn secondary small" onclick="clearGhToken()">clear token</button>
+      </div>
+      <label for="ghOwner">repo owner (your GitHub username)</label>
+      <input type="text" id="ghOwner" placeholder="e.g. octocat">
+      <label for="ghRepo">repo name</label>
+      <input type="text" id="ghRepo" placeholder="e.g. my-agent-product">
+      <div class="row-inline">
+        <label class="check"><input type="checkbox" id="autoDeploy"> auto-deploy on release (live mode only)</label>
+      </div>
+      <div class="actions">
+        <button class="btn secondary small" onclick="deployToGitHubPages(true)">deploy now</button>
+      </div>
+      <div class="ref-note" id="deployStatus">not deployed yet</div>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="panel">
+      <div class="section-title"><span class="prompt">$</span> memory_banks — persisted in this browser</div>
+      <div class="mem-grid" id="memGrid"></div>
+    </div>
+    <div class="panel">
+      <div class="section-title"><span class="prompt">$</span> attached_skills</div>
+      <div id="skillsGrid"></div>
+      <label style="margin-top:14px;">core workflow (always attached)</label>
+      <div class="orch-badge">autonomous-learning-agent — the governing 10-phase SKILL.md this console implements.</div>
+    </div>
+  </section>
+
+  <section>
+    <details>
+      <summary><span class="prompt">$</span> cat what_changed.md</summary>
+      <div class="ref-note"><b>What's real now, in live mode:</b></div>
+      <ul class="tight">
+        <li>Phase 4 (Execute) makes the model write a complete, runnable, single-file HTML product — new build, or a real enhancement of whatever you paste into "existing product to enhance."</li>
+        <li>That output is genuinely rendered in a sandboxed iframe and monitored for real <code>window.onerror</code> / unhandled-rejection events — not asked about, actually triggered by actually running the code.</li>
+        <li>Phase 5 (Verify) combines Claude's honest grading with that real signal: <b>any actual runtime error forces a fail, regardless of what the model or the quality score says.</b> This is a hard override, not a suggestion to the model.</li>
+        <li>Phase 6 (Reflect) receives the real captured error messages, not a guess.</li>
+        <li>A failed cycle's product becomes the input to the next cycle's Execute — the agent is iterating on its own actual output, not starting over.</li>
+        <li>Memory persists in <code>localStorage</code> across reloads and runs; recalled failure/knowledge/strategy entries are passed into Understand/Plan/Execute on every future run.</li>
+        <li><b>Deployment is real</b>: with a GitHub token, "deploy now" (or auto-deploy on release) calls the actual GitHub REST API to create/update a repo, commit the product as <code>index.html</code>, and enable GitHub Pages — you get back a real public URL.</li>
+      </ul>
+      <div class="ref-note"><b>What's still limited, honestly:</b></div>
+      <ul class="tight">
+        <li>The HTML "parse validity" check is weak — browsers auto-correct almost any HTML, so it rarely catches anything. The real teeth come from actually running the JS and catching real errors, not from HTML validation.</li>
+        <li>Verify is still one LLM-as-judge pass on top of the real error check, not a full test suite — a subtly wrong-but-error-free product can still pass.</li>
+        <li>Deploy assumes the target repo's default branch works with Pages (usually <code>main</code>) and that your token has the right scope; it does not create a private repo or handle organization-owned repos.</li>
+        <li>No API key = nothing runs live, and no GitHub token = nothing deploys. Neither is faked as a fallback.</li>
+      </ul>
+      <div class="ref-note">Five memory subsystems (from <code>architecture.md</code>):</div>
+      <table>
+        <tr><th>Store</th><th>What it holds</th></tr>
+        <tr><td>Episode Memory</td><td>Chronological execution traces, telemetry, historical outcomes.</td></tr>
+        <tr><td>Knowledge Memory</td><td>Domain facts, project constraints, schemas, references.</td></tr>
+        <tr><td>Failure Memory</td><td>Error classifications, root-cause analysis, prevention rules.</td></tr>
+        <tr><td>Skill Registry</td><td>Executable procedures & capability modules (SKILL.md files).</td></tr>
+        <tr><td>Strategy Memory</td><td>Reasoning patterns & optimization heuristics.</td></tr>
+      </table>
+      <table>
+        <tr><th>#</th><th>Phase</th><th>Arc</th><th>Key gate</th></tr>
+        <tr><td>1</td><td>Understand</td><td>Forward</td><td>—</td></tr>
+        <tr><td>2</td><td>Recall</td><td>Forward</td><td>—</td></tr>
+        <tr><td>3</td><td>Plan</td><td>Forward</td><td>—</td></tr>
+        <tr><td>4</td><td>Execute</td><td>Forward</td><td>Task completed?</td></tr>
+        <tr><td>5</td><td>Verify</td><td>Forward</td><td>Definition of Done? (pass/fail)</td></tr>
+        <tr><td>6</td><td>Reflect</td><td>Learning</td><td>Was this failure known?</td></tr>
+        <tr><td>7</td><td>Learn</td><td>Learning</td><td>Is it reusable?</td></tr>
+        <tr><td>8</td><td>Experiment</td><td>Learning</td><td>Better than current version?</td></tr>
+        <tr><td>9</td><td>Evolve</td><td>Learning</td><td>Improvement confirmed?</td></tr>
+        <tr><td>10</td><td>Remember</td><td>Learning</td><td>—</td></tr>
+      </table>
+    </details>
+  </section>
+
+  <footer>live mode calls api.anthropic.com and, if you deploy, api.github.com directly from your browser · demo mode makes zero network calls · memory persists in this browser only</footer>
+</div>
+
+<script>
+/* ============================================================
+   DATA
+   ============================================================ */
+const PHASES_FORWARD = ["understand","recall","plan","execute","verify"];
+const MEM_TYPES = ["episodic","knowledge","failure","skill","strategy"];
+
+const SKILLS = [
+  {name:"code-generation", tags:["build","code","endpoint","implement","script","api","develop","calculator","page","app"],
+   desc:"Generate clean, well-documented, production-ready code. Used whenever a task requires writing new source files, functions, or endpoints."},
+  {name:"web-research", tags:["research","compare","market","price","find","investigate","vendor"],
+   desc:"Research a topic via web search and synthesize findings with source attribution."},
+  {name:"data-analysis", tags:["data","csv","spreadsheet","report","trend","metric","analyze","cost"],
+   desc:"Analyze structured/tabular data for trends, summary statistics, and anomalies."},
+];
+
+const MEM_META = {
+  episodic:{name:"Episode Memory", desc:"Execution traces, telemetry, historical outcomes."},
+  knowledge:{name:"Knowledge Memory", desc:"Domain facts, constraints, schemas, references."},
+  failure:{name:"Failure Memory", desc:"Root causes, failure categories, prevention rules."},
+  skill:{name:"Skill Registry", desc:"Executable procedures & capability modules."},
+  strategy:{name:"Strategy Memory", desc:"Reasoning patterns & optimization heuristics."},
+};
+
+const LS_MEM = "ala_memory_v1";
+const LS_VER = "ala_version_v1";
+const LS_KEY = "ala_apikey_v1";
+const LS_WS  = "ala_workspaceid_v1";
+const LS_GH  = "ala_ghtoken_v1";
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let memory = {episodic:[], knowledge:[], failure:[], skill:[], strategy:[]};
+let version = "v1.0";
+let running = false;
+let currentProductHtml = "";
+let currentProductIsDemo = false;
+let pendingPreviewResolve = null;
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+function $(id){ return document.getElementById(id); }
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+function makeEntry(obj){ return Object.assign({}, obj, {id: Math.random().toString(36).slice(2,10), ts: new Date().toLocaleTimeString()}); }
+function bumpVersion(v){ const m = v.replace("v","").split(".").map(Number); return "v" + m[0] + "." + (m[1]+1); }
+function truncate(s, n){ s = String(s); return s.length > n ? s.slice(0,n) + "… (" + s.length + " chars)" : s; }
+function hashStr(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h*31 + s.charCodeAt(i)) >>> 0; } return h; }
+
+function searchMemory(store, query, limit){
+  const terms = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  return memory[store]
+    .map(e => ({e, score: terms.reduce((a,t) => a + (JSON.stringify(e).toLowerCase().includes(t) ? 1 : 0), 0)}))
+    .filter(x => x.score > 0).sort((a,b) => b.score - a.score).slice(0, limit).map(x => x.e);
+}
+function keywordScore(text, tags){
+  const t = text.toLowerCase();
+  return tags.reduce((acc, tag) => acc + (t.includes(tag) ? 1 : 0), 0);
+}
+
+/* ============================================================
+   PERSISTENCE
+   ============================================================ */
+function saveMemory(){ try{ localStorage.setItem(LS_MEM, JSON.stringify(memory)); }catch(e){} }
+function loadMemory(){
+  try{ const raw = localStorage.getItem(LS_MEM); if (raw){ const parsed = JSON.parse(raw); MEM_TYPES.forEach(k => { memory[k] = Array.isArray(parsed[k]) ? parsed[k] : []; }); } }catch(e){}
+}
+function saveVersion(){ try{ localStorage.setItem(LS_VER, version); }catch(e){} }
+function loadVersion(){ try{ const v = localStorage.getItem(LS_VER); if (v) version = v; }catch(e){} }
+
+function getApiKey(){ return ($("apiKey").value || "").trim(); }
+function getWorkspaceId(){ return ($("workspaceId").value || "").trim(); }
+function saveApiKeyIfWanted(){
+  if ($("rememberKey").checked){
+    try{
+      localStorage.setItem(LS_KEY, getApiKey());
+      if (getWorkspaceId()) localStorage.setItem(LS_WS, getWorkspaceId()); else localStorage.removeItem(LS_WS);
+      log("API key" + (getWorkspaceId() ? " and workspace ID" : "") + " saved to this browser.", "meta");
+    }catch(e){}
+  } else { try{ localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_WS); }catch(e){} }
+}
+function clearApiKey(){
+  $("apiKey").value = ""; $("workspaceId").value = ""; $("rememberKey").checked = false;
+  try{ localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_WS); }catch(e){}
+  log("API key and workspace ID cleared.", "meta");
+}
+function loadApiKey(){
+  try{
+    const k = localStorage.getItem(LS_KEY); if (k){ $("apiKey").value = k; $("rememberKey").checked = true; }
+    const w = localStorage.getItem(LS_WS); if (w){ $("workspaceId").value = w; }
+  }catch(e){}
+}
+
+function saveGhTokenIfWanted(){
+  if ($("rememberGhToken").checked){ try{ localStorage.setItem(LS_GH, ($("ghToken").value||"").trim()); log("GitHub token saved to this browser.", "meta"); }catch(e){} }
+  else { try{ localStorage.removeItem(LS_GH); }catch(e){} }
+}
+function clearGhToken(){ $("ghToken").value=""; $("rememberGhToken").checked=false; try{ localStorage.removeItem(LS_GH); }catch(e){} log("GitHub token cleared.", "meta"); }
+function loadGhToken(){ try{ const k = localStorage.getItem(LS_GH); if (k){ $("ghToken").value = k; $("rememberGhToken").checked = true; } }catch(e){} }
+
+/* ============================================================
+   REAL LLM CALL
+   ============================================================ */
+function safeJson(text){
+  let t = (text || "").trim();
+  if (t.startsWith("```")){ t = t.replace(/^```[a-zA-Z]*\n?/, "").replace(/```$/, "").trim(); }
+  try{ return JSON.parse(t); }
+  catch(e){ const m = t.match(/\{[\s\S]*\}/); if (m){ try{ return JSON.parse(m[0]); }catch(e2){} } return {raw: text, _parse_error: true}; }
+}
+
+async function anthropicRawCall(system, userContent, maxTokens){
+  const key = getApiKey();
+  if (!key) throw new Error("No API key set — enter one under $ live_mode.");
+  const model = ($("modelInput").value || "claude-sonnet-5").trim();
+
+  const headers = {
+    "content-type": "application/json", "x-api-key": key,
+    "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true",
+  };
+  const workspaceId = getWorkspaceId();
+  if (workspaceId) headers["anthropic-workspace-id"] = workspaceId;
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: headers,
+    body: JSON.stringify({model: model, max_tokens: maxTokens || 700, system: system, messages: [{role: "user", content: userContent}]}),
+  });
+
+  if (!res.ok){
+    let detail = res.statusText;
+    try{ const body = await res.json(); if (body && body.error && body.error.message) detail = body.error.message; }catch(e){}
+    if (res.status === 400 && /workspace/i.test(detail) && !workspaceId){
+      detail += " — enter your workspace ID under $ live_mode and try again.";
+    }
+    throw new Error("Anthropic API error " + res.status + ": " + detail);
+  }
+  const data = await res.json();
+  return (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+}
+
+async function callLLM(system, userObj, maxTokens){
+  const strictSystem = system + "\n\nRespond with JSON only. No prose, no markdown fences, no commentary outside the JSON object.";
+  const text = await anthropicRawCall(strictSystem, JSON.stringify(userObj, null, 2), maxTokens);
+  return safeJson(text);
+}
+
+/* Marker-delimited raw call — used only for Phase 4 (Execute), which has to
+   return a whole multi-line HTML file. Asking a model to embed that inside a
+   JSON string is a known failure mode: real newlines/quotes in the code break
+   JSON.parse, or the response gets truncated before the closing brace. Plain
+   text with unique delimiters has no escaping to get wrong. */
+const HTML_START = "@@ALA_HTML_START@@";
+const HTML_END = "@@ALA_HTML_END@@";
+const SUMMARY_MARK = "@@ALA_SUMMARY@@";
+const WARNINGS_MARK = "@@ALA_WARNINGS@@";
+
+async function callLLMProduct(system, userObj, maxTokens){
+  const fullSystem = system +
+    "\n\nRespond in PLAIN TEXT using exactly this format, with no JSON and no markdown code fences:\n" +
+    HTML_START + "\n<the complete raw HTML file, starting with <!DOCTYPE html>>\n" + HTML_END + "\n" +
+    SUMMARY_MARK + "\n<one-line summary of what you built or changed>\n" +
+    WARNINGS_MARK + "\n<comma-separated list of caveats, or the word none>\n" +
+    "It is mandatory to include the closing " + HTML_END + " marker immediately after the final </html> tag, even on a long file — do not stop right after </html> without it.";
+  const text = await anthropicRawCall(fullSystem, JSON.stringify(userObj, null, 2), maxTokens);
+  return parseProductResponse(text);
+}
+
+/* Trim a captured HTML block down to something sane: drop anything after a
+   stray SUMMARY/WARNINGS marker if one snuck in without a proper HTML_END,
+   and prefer cutting at the last </html> tag over trailing prose. */
+function extractHtmlBlock(raw){
+  let cut = raw;
+  const cutPoints = [cut.indexOf(SUMMARY_MARK), cut.indexOf(WARNINGS_MARK)].filter(i => i !== -1);
+  if (cutPoints.length) cut = cut.slice(0, Math.min.apply(null, cutPoints));
+  const lastClose = cut.toLowerCase().lastIndexOf("</html>");
+  if (lastClose !== -1) cut = cut.slice(0, lastClose + "</html>".length);
+  return cut.trim();
+}
+
+function parseProductResponse(text){
+  let t = text.trim();
+  t = t.replace(/^```[a-zA-Z]*\n?/, "").replace(/```\s*$/, "").trim(); // strip accidental markdown fences
+
+  const s = t.indexOf(HTML_START);
+  if (s !== -1){
+    const afterStart = t.slice(s + HTML_START.length);
+    const e = afterStart.indexOf(HTML_END);
+    if (e !== -1){
+      const html = afterStart.slice(0, e).trim();
+      const after = afterStart.slice(e + HTML_END.length);
+      const sIdx = after.indexOf(SUMMARY_MARK), wIdx = after.indexOf(WARNINGS_MARK);
+      const summary = sIdx !== -1 ? after.slice(sIdx + SUMMARY_MARK.length, wIdx !== -1 ? wIdx : undefined).trim() : "";
+      let warnings = [];
+      if (wIdx !== -1){
+        const wText = after.slice(wIdx + WARNINGS_MARK.length).trim();
+        warnings = (!wText || /^none$/i.test(wText)) ? [] : wText.split(",").map(w => w.trim()).filter(Boolean);
+      }
+      return {product_html: html, summary: summary, warnings: warnings};
+    }
+    // end marker missing — the model forgot it, but the HTML itself is probably fine.
+    // Salvage everything after the start marker instead of discarding the whole response.
+    const html = extractHtmlBlock(afterStart);
+    if (html.length >= 20){
+      return {product_html: html, summary: "(note: the model omitted the closing marker — used everything after the start marker; double-check the preview looks complete)", warnings: ["closing marker was missing from the model's reply"]};
+    }
+  }
+
+  // no start marker either — look for a bare <!doctype/<html anywhere in the text
+  const bare = t.match(/<!doctype html[\s\S]*/i) || t.match(/<html[\s>][\s\S]*/i);
+  if (bare){
+    const html = extractHtmlBlock(bare[0]);
+    if (html.length >= 20) return {product_html: html, summary: "(auto-extracted — model did not use the requested marker format)", warnings: []};
+  }
+
+  return {product_html: null, summary: "", warnings: [], _raw: text};
+}
+
+
+/* ============================================================
+   REAL EXECUTION — render the actual product and catch real errors
+   ============================================================ */
+function checkBasicSanity(html){
+  if (!html || typeof html !== "string" || html.trim().length < 20) return {valid:false, error:"product_html was empty or trivially short"};
+  try{
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const errNode = doc.querySelector("parsererror");
+    if (errNode) return {valid:false, error: errNode.textContent.trim().slice(0,300)};
+  }catch(e){ return {valid:false, error:String(e)}; }
+  return {valid:true, error:null};
+}
+
+function injectMonitor(html){
+  const monitor = '<script>(function(){var __e=[];' +
+    'window.addEventListener("error",function(ev){__e.push({message:String(ev.message||(ev.error&&ev.error.message)||"error")});});' +
+    'window.addEventListener("unhandledrejection",function(ev){__e.push({message:"unhandled rejection: "+String((ev.reason&&ev.reason.message)||ev.reason)});});' +
+    'window.addEventListener("load",function(){setTimeout(function(){try{parent.postMessage({__alaMonitor:true,errors:__e},"*");}catch(e){}},500);});' +
+    '})();<\/script>';
+  if (/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i, m => m + monitor);
+  if (/<html[^>]*>/i.test(html)) return html.replace(/<html[^>]*>/i, m => m + monitor);
+  return monitor + html;
+}
+
+window.addEventListener("message", function(ev){
+  if (ev && ev.data && ev.data.__alaMonitor && pendingPreviewResolve){
+    const resolve = pendingPreviewResolve; pendingPreviewResolve = null; resolve({errors: ev.data.errors || [], ready:true});
+  }
+});
+
+function renderPreview(html){
+  return new Promise(function(resolve){
+    let settled = false;
+    let timer = setTimeout(function(){
+      if (settled) return; settled = true; pendingPreviewResolve = null;
+      resolve({errors:[{message:"preview did not report back within 3s (page may be slow, blocked, or badly broken)"}], ready:false});
+    }, 3000);
+    pendingPreviewResolve = function(result){ if (settled) return; settled = true; clearTimeout(timer); resolve(result); };
+    $("previewFrame").srcdoc = injectMonitor(html);
+  });
+}
+
+async function renderAndCheck(html, isDemo){
+  currentProductHtml = html; currentProductIsDemo = !!isDemo;
+  const sanity = checkBasicSanity(html);
+  const runtime = sanity.valid ? await renderPreview(html) : {errors:[{message:"skipped — " + sanity.error}], ready:false};
+  const statusEl = $("previewStatus");
+  const errCount = runtime.errors.length;
+  statusEl.textContent = (isDemo ? "[DEMO] " : "") + "sanity: " + (sanity.valid ? "ok" : "FAILED — " + sanity.error) + " · runtime errors: " + errCount + (errCount ? " — " + runtime.errors.map(e=>e.message).join("; ") : "");
+  return {parse_valid: sanity.valid, parse_error: sanity.error, runtime_errors: runtime.errors, rendered: runtime.ready};
+}
+
+function downloadProduct(){
+  if (!currentProductHtml){ log("nothing to download yet.", "bad"); return; }
+  const blob = new Blob([currentProductHtml], {type:"text/html"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = "product.html"; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+function openPreviewNewTab(){
+  if (!currentProductHtml){ log("nothing to preview yet.", "bad"); return; }
+  const url = URL.createObjectURL(new Blob([currentProductHtml], {type:"text/html"}));
+  window.open(url, "_blank");
+}
+
+/* ============================================================
+   REAL DEPLOYMENT — GitHub Pages via the real GitHub REST API
+   ============================================================ */
+function toBase64Utf8(str){
+  const bytes = new TextEncoder().encode(str);
+  let binary = ""; bytes.forEach(b => binary += String.fromCharCode(b));
+  return btoa(binary);
+}
+async function ghRequest(path, token, options){
+  options = options || {};
+  const res = await fetch("https://api.github.com" + path, Object.assign({}, options, {
+    headers: Object.assign({
+      "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28",
+    }, options.headers || {}),
+  }));
+  let body = null; try{ body = await res.json(); }catch(e){}
+  if (!res.ok){
+    const err = new Error("GitHub API " + res.status + ": " + (body && body.message ? body.message : res.statusText));
+    err.status = res.status; throw err;
+  }
+  return {status: res.status, body};
+}
+async function getDefaultBranch(owner, repo, token){
+  const info = await ghRequest("/repos/" + owner + "/" + repo, token, {method:"GET"});
+  return (info.body && info.body.default_branch) || "main";
+}
+async function ensureRepo(owner, repo, token){
+  try{ await ghRequest("/repos/" + owner + "/" + repo, token, {method:"GET"}); return; }
+  catch(err){ if (err.status !== 404) throw err; }
+  await ghRequest("/user/repos", token, {
+    method:"POST", headers:{"content-type":"application/json"},
+    body: JSON.stringify({name: repo, description: "Built by autonomous_learning_agent console", auto_init: true}),
+  });
+  await sleep(1500);
+}
+async function commitProductFile(owner, repo, token, html, branch, message){
+  let sha = null;
+  try{
+    const existing = await ghRequest("/repos/" + owner + "/" + repo + "/contents/index.html?ref=" + branch, token, {method:"GET"});
+    sha = existing.body && existing.body.sha;
+  }catch(err){ if (err.status !== 404) throw err; }
+  const payload = {message: message || "Deploy via autonomous_learning_agent console", content: toBase64Utf8(html), branch: branch};
+  if (sha) payload.sha = sha;
+  await ghRequest("/repos/" + owner + "/" + repo + "/contents/index.html", token, {
+    method:"PUT", headers:{"content-type":"application/json"}, body: JSON.stringify(payload),
+  });
+}
+async function ensurePages(owner, repo, token, branch){
+  try{
+    await ghRequest("/repos/" + owner + "/" + repo + "/pages", token, {
+      method:"POST", headers:{"content-type":"application/json"}, body: JSON.stringify({source:{branch: branch, path:"/"}}),
+    });
+  }catch(err){ if (err.status !== 409 && err.status !== 422) throw err; }
+  for (let i=0;i<5;i++){
+    try{ const info = await ghRequest("/repos/" + owner + "/" + repo + "/pages", token, {method:"GET"}); if (info.body && info.body.html_url) return info.body.html_url; }
+    catch(err){}
+    await sleep(1500);
+  }
+  return "https://" + owner + ".github.io/" + repo + "/";
+}
+async function deployToGitHubPages(manual){
+  const token = ($("ghToken").value || "").trim();
+  const owner = ($("ghOwner").value || "").trim();
+  const repo = ($("ghRepo").value || "").trim();
+  const statusEl = $("deployStatus");
+  if (!token || !owner || !repo){ log("deploy skipped — GitHub token, owner, and repo name are all required.", "bad"); statusEl.textContent = "deploy skipped — missing token/owner/repo."; return; }
+  if (!currentProductHtml){ log("deploy skipped — no product has been generated yet.", "bad"); statusEl.textContent = "deploy skipped — no product yet."; return; }
+  if (currentProductIsDemo) log("note: deploying DEMO scripted content — this is not a real generated product.", "warn");
+
+  statusEl.textContent = "deploying…";
+  log("deploying to GitHub Pages: " + owner + "/" + repo, "meta");
+  try{
+    await ensureRepo(owner, repo, token);
+    const branch = await getDefaultBranch(owner, repo, token);
+    await commitProductFile(owner, repo, token, currentProductHtml, branch, "Deploy via autonomous_learning_agent console (" + version + ")");
+    const url = await ensurePages(owner, repo, token, branch);
+    log("deployed — live at " + url, "good");
+    statusEl.innerHTML = 'live: <a href="' + url + '" target="_blank" rel="noopener">' + url + '</a> (a brand-new site can take a minute or two to propagate)';
+  }catch(err){
+    log("deploy failed — " + err.message, "bad");
+    statusEl.textContent = "deploy failed — " + err.message;
+  }
+}
+
+/* ============================================================
+   LIVE PROVIDER — real reasoning per phase, product-focused
+   ============================================================ */
+const liveProvider = {
+  async understand(goal, constraints, priorLessons, existingSource){
+    const system = 'You are Phase 1 (UNDERSTAND) of an autonomous agent that builds real single-file web products. Turn the raw goal into a structured requirement model. If existing_product_excerpt is provided, this is an enhancement of that product, not a fresh build. If prior_attempt_lessons are provided, factor them in. Respond ONLY with JSON: {"goal":str,"scope":str,"actors":[str],"workflow":[str],"missing_info":[str],"assumptions":[str],"acceptance_criteria":[str],"definition_of_done":str}';
+    const user = {goal, constraints, prior_attempt_lessons: priorLessons || [], existing_product_excerpt: existingSource ? truncate(existingSource, 1500) : null};
+    return await callLLM(system, user, 500);
+  },
+  async recall(goal){
+    const hits = {}; MEM_TYPES.forEach(store => { hits[store] = searchMemory(store, goal, 3); });
+    const ranked = SKILLS.map(s => ({s, score: keywordScore(goal, s.tags)})).sort((a,b) => b.score - a.score);
+    const top = ranked.filter(r => r.score > 0).slice(0,2);
+    const relevantSkills = (top.length ? top : ranked.slice(0,2)).map(r => r.s);
+    return {hits, relevantSkills, display: {memory_hits: Object.fromEntries(Object.entries(hits).map(([k,v]) => [k, v.length])), relevant_skills: relevantSkills.map(s => s.name)}};
+  },
+  async plan(requirementModel, recall, priorLessons, existingSource){
+    const system = 'You are Phase 3 (PLAN) of an autonomous agent. Produce implementation guidance for building or enhancing ONE single-file HTML product in a single consolidated build step (not a per-task loop). Respond ONLY with JSON: {"tasks":[{"id":str,"description":str,"workstream":str,"depends_on":[str]}],"risk_assessment":str}';
+    const user = {
+      requirement_model: requirementModel,
+      relevant_skills: recall.relevantSkills.map(s => ({name: s.name, guidance: s.desc})),
+      memory_hits: recall.hits, prior_attempt_lessons: priorLessons || [],
+      existing_product_excerpt: existingSource ? truncate(existingSource, 1500) : null,
+    };
+    return await callLLM(system, user, 700);
+  },
+  async execute(plan, recall, priorLessons, existingSource){
+    const system = 'You are Phase 4 (EXECUTE) of an autonomous agent. Build or enhance a REAL, runnable web product as ONE complete, self-contained HTML file (inline <style> and <script>, no build step; external CDN script tags only if truly necessary). If existing_product_source is provided, treat it as the current product and enhance/fix it — preserve what works. Keep it focused and reasonably concise.';
+    const user = {
+      plan, skill_guidance: recall.relevantSkills.map(s => s.desc), prior_attempt_lessons: priorLessons || [],
+      existing_product_source: existingSource || null,
+    };
+    const result = await callLLMProduct(system, user, 6000);
+    if (!result || typeof result.product_html !== "string" || result.product_html.trim().length < 20){
+      const hint = result && result._raw ? " Model's raw reply started with: " + truncate(result._raw, 200) : "";
+      throw new Error("Execute did not return usable product_html (no HTML markers found in the response, or it was empty)." + hint);
+    }
+    const technical = await renderAndCheck(result.product_html, false);
+    return {product_html: result.product_html, summary: result.summary || "", warnings: result.warnings || [], _technical: technical};
+  },
+  async verify(requirementModel, execution, threshold){
+    const system = 'You are Phase 5 (VERIFY) of an autonomous agent. Independently and honestly judge whether the product (summarized, with an excerpt) satisfies the acceptance criteria and definition of done in the requirement model. You are also given real technical validation results from actually running the product — take them seriously. Be a strict grader. Respond ONLY with JSON: {"quality_score":number,"requirement_coverage":number,"defects":[str],"pass":boolean,"notes":str}';
+    const user = {
+      requirement_model: requirementModel, product_summary: execution.summary,
+      product_html_excerpt: truncate(execution.product_html, 6000),
+      technical_validation: execution._technical, quality_threshold_percent: threshold,
+    };
+    const v = await callLLM(system, user, 500);
+    v.passed = !!v.pass && typeof v.quality_score === "number" && v.quality_score >= threshold;
+    if (!execution._technical.parse_valid || (execution._technical.runtime_errors && execution._technical.runtime_errors.length > 0)){
+      v.passed = false;
+      v.notes = (v.notes || "") + " [overridden to FAIL by real technical check: " + execution._technical.runtime_errors.length + " runtime error(s), parse_valid=" + execution._technical.parse_valid + "]";
+      v.defects = (v.defects || []).concat(execution._technical.runtime_errors.map(e => e.message));
+    }
+    return v;
+  },
+  async reflect(verification, execution, knownPatterns){
+    const system = 'You are Phase 6 (REFLECT) of an autonomous agent. Verification failed. Diagnose the actual root cause using the real captured runtime errors and defects listed — be specific, not generic. Check it against known past failure patterns provided. Respond ONLY with JSON: {"root_cause":str,"failure_category":str,"known_pattern":boolean,"corrective_strategy":str,"prevention_idea":str}';
+    const user = {verification, product_summary: execution.summary, technical: execution._technical, known_failure_patterns: knownPatterns};
+    return await callLLM(system, user, 500);
+  },
+  async learn(verification, reflection){
+    const system = 'You are Phase 7 (LEARN) of an autonomous agent. Extract one specific, reusable lesson from this cycle. Respond ONLY with JSON: {"lesson":str,"category":str,"reusable":boolean,"confidence":number,"tags":[str]}\ncategory must be exactly one of "knowledge", "strategy", "skill".';
+    return await callLLM(system, {verification, reflection}, 400);
+  },
+  async experiment(learning, plan, execution){
+    const system = 'You are Phase 8 (EXPERIMENT) of an autonomous agent. Given the lesson learned, propose up to 3 concrete alternative strategies for the next build attempt and recommend the best one. Respond ONLY with JSON: {"hypotheses":[str],"recommended_approach":str,"improvement_score":number}';
+    const user = {learning, previous_plan: plan, previous_product_summary: execution.summary};
+    return await callLLM(system, user, 500);
+  },
+  async evolve(experiment){
+    const system = 'You are Phase 9 (EVOLVE) of an autonomous agent. Decide honestly whether the recommended approach from this experiment is worth promoting into the active strategy set. Respond ONLY with JSON: {"upgrade_type":str,"confirmed":boolean,"version_note":str}\nupgrade_type must be exactly one of "skill", "prompt", "strategy", "workflow", "knowledge".';
+    return await callLLM(system, {experiment}, 300);
+  },
+};
+
+/* ============================================================
+   DEMO PROVIDER — scripted stub, kept only for comparison
+   ============================================================ */
+const demoProvider = {
+  async understand(goal, constraints){
+    return {goal, scope: "Deliver the requested outcome (DEMO — scripted, not reasoned)", actors: ["user","agent"], constraints,
+      acceptance_criteria: ["Output addresses the stated goal","No unresolved critical errors","Verification score meets threshold"], definition_of_done: "All acceptance criteria pass."};
+  },
+  async recall(goal){
+    const hits = {}; MEM_TYPES.forEach(store => { hits[store] = searchMemory(store, goal, 3); });
+    const ranked = SKILLS.map(s => ({s, score: keywordScore(goal, s.tags)})).sort((a,b) => b.score - a.score);
+    const top = ranked.filter(r => r.score > 0).slice(0,2);
+    const relevantSkills = (top.length ? top : ranked.slice(0,2)).map(r => r.s);
+    return {hits, relevantSkills, display: {memory_hits: Object.fromEntries(Object.entries(hits).map(([k,v]) => [k, v.length])), relevant_skills: relevantSkills.map(s => s.name)}};
+  },
+  async plan(requirementModel, recall){
+    return {tasks: [{id:"T1", description:"Analyze goal (scripted)", workstream:"PLAN", depends_on:[]},
+                     {id:"T2", description:"Produce solution (scripted)", workstream:(recall.relevantSkills[0]&&recall.relevantSkills[0].name)||"BE", depends_on:["T1"]},
+                     {id:"T3", description:"Validate solution (scripted)", workstream:"QA", depends_on:["T2"]}],
+            dependencies: {T2:["T1"], T3:["T2"]}, risk_assessment:"[DEMO] scripted, not assessed"};
+  },
+  async execute(plan, recall, priorLessons, cycle, forcedFail){
+    const goal = (plan.tasks[0] && plan.tasks[0].description) || "task";
+    const h = hashStr(goal + "|" + cycle);
+    let score = clamp(58 + (cycle - 1) * 15 + ((h % 11) - 5), 5, 99);
+    if (forcedFail) score = clamp(Math.min(score, 40), 5, 40);
+    const broken = forcedFail ? '<script>demoUndefinedFunctionCausingARealError();<\/script>' : '';
+    const html = '<!DOCTYPE html><html><head><title>DEMO product</title></head><body style="font-family:sans-serif;padding:24px;">' +
+      '<h1>[DEMO] ' + goal + '</h1><p>This is scripted placeholder output, not a real generated product.</p>' + broken + '</body></html>';
+    const technical = await renderAndCheck(html, true);
+    return {product_html: html, summary: "[DEMO] scripted placeholder product", warnings: [], _technical: technical, _score: score};
+  },
+  async verify(requirementModel, execution, threshold){
+    const realErr = execution._technical.runtime_errors.length > 0 || !execution._technical.parse_valid;
+    const passed = !realErr && execution._score >= threshold;
+    return {quality_score: execution._score, requirement_coverage: clamp(execution._score + 4, 0, 100),
+      defects: passed ? [] : ["[DEMO] Output below quality threshold or real runtime error detected"],
+      pass: passed, passed: passed, go_no_go: passed ? "GO" : "NO-GO", notes: "Scripted formula-based score, but the runtime-error check on this DEMO html is real."};
+  },
+  async reflect(verification, execution, knownPatterns, cycle){
+    const categories = ["Requirement ambiguity","Missing edge-case handling","Reasoning error","Tool/integration failure"];
+    const category = categories[(cycle || 1) % categories.length];
+    const known = memory.failure.some(f => f.failure_category === category);
+    return {root_cause: "[DEMO] " + category + " (scripted, not diagnosed) — real errors captured: " + JSON.stringify(execution._technical.runtime_errors),
+      failure_category: category, known_pattern: known,
+      corrective_strategy: known ? "Apply existing fix pattern from failure memory" : "Create new failure pattern and corrective strategy",
+      prevention_idea: "[DEMO] scripted placeholder"};
+  },
+  async learn(verification, reflection){
+    const classification = reflection.failure_category.indexOf("Tool") !== -1 ? "skill" : reflection.failure_category.indexOf("Requirement") !== -1 ? "knowledge" : "strategy";
+    return {lesson: "[DEMO] Address category: " + reflection.failure_category + " by: " + reflection.corrective_strategy, reusable: true, classification, confidence: 0.8};
+  },
+  async experiment(learning){ return {hypotheses: ["[DEMO] Keep current strategy","[DEMO] Revise strategy"], recommended_approach: "[DEMO] Revise strategy", improvement_score: 20}; },
+  async evolve(experiment){ return {upgrade_type: "strategy", confirmed: true, version_note: "[DEMO] scripted confirmation", regression_passed: true, security_passed: true}; },
+};
+
+/* ============================================================
+   RENDERING
+   ============================================================ */
+function buildMemGrid(){
+  const grid = $("memGrid"); grid.innerHTML = "";
+  MEM_TYPES.forEach(store => {
+    const meta = MEM_META[store]; const card = document.createElement("div"); card.className = "mem-card";
+    card.innerHTML = '<div class="count" id="count-' + store + '">0</div><div class="name">' + meta.name + '</div><div class="desc">' + meta.desc + '</div><div class="preview" id="preview-' + store + '">empty</div>';
+    grid.appendChild(card);
+  });
+}
+function storePreview(store){
+  const arr = memory[store]; if (!arr.length) return "empty";
+  const last = arr[arr.length - 1];
+  if (store === "episodic") return (last.status || "—") + " · cycle " + (last.cycle != null ? last.cycle : "—");
+  if (store === "failure") return last.failure_category || "—";
+  return last.lesson || "—";
+}
+function renderMemory(){ MEM_TYPES.forEach(store => { $("count-" + store).textContent = memory[store].length; $("preview-" + store).textContent = storePreview(store); }); }
+function buildSkillsGrid(){
+  const grid = $("skillsGrid"); grid.innerHTML = "";
+  SKILLS.forEach(s => { const card = document.createElement("div"); card.className = "skill-card"; card.id = "skill-" + s.name;
+    card.innerHTML = '<div class="name">' + s.name + '</div><div class="desc">' + s.desc + '</div>'; grid.appendChild(card); });
+}
+function renderSkillHighlights(names){ SKILLS.forEach(s => { const el = $("skill-" + s.name); if (el) el.classList.toggle("active", names.indexOf(s.name) !== -1); }); }
+function formatVal(v){
+  if (Array.isArray(v)) return v.length ? v.map(x => truncate(typeof x === "object" ? JSON.stringify(x) : x, 200)).join(", ") : "—";
+  if (v && typeof v === "object") return truncate(JSON.stringify(v), 300);
+  if (typeof v === "number") return Number.isInteger(v) ? String(v) : v.toFixed(2);
+  return truncate(v, 300);
+}
+function log(text, tone){ const el = document.createElement("div"); el.className = "log-line tone-" + (tone||"meta"); el.textContent = text; const p=$("log"); p.appendChild(el); p.scrollTop = p.scrollHeight; }
+function logPhase(key, title, data){
+  const clean = Object.assign({}, data); delete clean._score;
+  const arc = PHASES_FORWARD.indexOf(key) !== -1 ? "forward" : "learning";
+  const rows = Object.entries(clean).map(([k,v]) => '<div class="kv"><span class="k">' + k + '</span><span class="v">' + formatVal(v) + '</span></div>').join("");
+  const el = document.createElement("div"); el.className = "log-entry arc-" + arc;
+  el.innerHTML = '<div class="log-title">' + title + '</div><div class="log-body">' + rows + '</div>';
+  const p=$("log"); p.appendChild(el); p.scrollTop = p.scrollHeight;
+}
+function setNodeState(id, state){ const el=$(id); if(!el) return; el.classList.remove("active","done","pass","fail"); if(state) el.classList.add(state); }
+function resetDiagram(){ for(let n=1;n<=10;n++) setNodeState("node-"+n,null); setNodeState("node-gate",null); setNodeState("node-release",null); $("branch-fail").classList.remove("lit-fail"); $("branch-loop").classList.remove("lit-loop"); }
+function renderOutcome(report){
+  const el = $("outcome"); el.classList.remove("pass","fail");
+  if (report.status === "RELEASE_COMPLETE"){ el.classList.add("pass"); el.textContent = "RELEASE_COMPLETE [" + report.mode + "] — quality " + report.quality_score + "/100 on cycle " + report.cycle + "/" + report.maxCycles + " · agent " + report.version; }
+  else if (report.status === "ERROR"){ el.classList.add("fail"); el.textContent = "ERROR [" + report.mode + "] — " + report.message; }
+  else { el.classList.add("fail"); el.textContent = "NOT_RELEASED [" + report.mode + "] — max cycles (" + report.cycles + ") reached · agent " + report.version; }
+}
+function updateModeBanner(mode){
+  const el = $("modeBanner"); el.className = "mode-banner " + mode;
+  el.textContent = mode === "live" ? "LIVE — calling " + (($("modelInput").value||"").trim() || "claude-sonnet-5") + " for real" : "DEMO — scripted stub, no network calls, not real reasoning";
+}
+function setControlsDisabled(disabled){
+  ["goal","constraints","existingSource","maxCycles","threshold","forceFail","fastMode","runLiveBtn","runDemoBtn","resetBtn","apiKey","workspaceId","modelInput"].forEach(id => { $(id).disabled = disabled; });
+  $("status-dot").className = "dot" + (disabled ? " busy" : "");
+  $("status-text").textContent = disabled ? "running" : "idle";
+}
+
+/* ============================================================
+   ORCHESTRATION
+   ============================================================ */
+async function runPhaseNode(n, taskFn){
+  setNodeState("node-" + n, "active");
+  try{ const result = await taskFn(); setNodeState("node-" + n, "done"); return result; }
+  catch(err){ setNodeState("node-" + n, "fail"); throw err; }
+}
+
+async function runAgent(mode){
+  if (running) return;
+  running = true;
+  setControlsDisabled(true);
+  $("log").innerHTML = "";
+  resetDiagram();
+  updateModeBanner(mode);
+
+  if (mode === "live" && !getApiKey()){
+    log("No API key set — enter one under $ live_mode, or use 'run offline demo'.", "bad");
+    renderOutcome({status:"ERROR", message:"No API key set.", mode});
+    setControlsDisabled(false); running = false; return;
+  }
+  if (mode === "live") saveApiKeyIfWanted();
+
+  const goal = $("goal").value.trim() || "Build a small useful web tool";
+  const constraints = $("constraints").value.split(",").map(s => s.trim()).filter(Boolean);
+  const maxCycles = clamp(parseInt($("maxCycles").value, 10) || 2, 1, 5);
+  const threshold = parseInt($("threshold").value, 10);
+  const fast = $("fastMode").checked;
+  const demoDelay = fast ? 60 : 380;
+  const shortDelay = fast ? 40 : 220;
+  const forceFailFirst = mode === "demo" && $("forceFail").checked;
+  if (mode === "live" && $("forceFail").checked) log("note: 'force first cycle to fail' only applies in demo mode.", "warn");
+
+  let workingSource = $("existingSource").value.trim();
+  log('run started [' + mode.toUpperCase() + '] — goal: "' + goal + '" · threshold ' + threshold + '% · max ' + maxCycles + ' cycle(s)' + (workingSource ? " · enhancing pasted product" : " · building new"), "meta");
+
+  const provider = mode === "live" ? liveProvider : demoProvider;
+  let priorLessons = [];
+  let released = false;
+  let finalReport = null;
+
+  for (let cycle = 1; cycle <= maxCycles; cycle++){
+    log("── cycle " + cycle + " / " + maxCycles + " ──", "meta");
+    resetDiagram();
+
+    let requirementModel, recall, plan, execution, verification;
+    try{
+      requirementModel = await runPhaseNode(1, () => mode==="demo" ? sleep(demoDelay).then(()=>provider.understand(goal, constraints, priorLessons, workingSource)) : provider.understand(goal, constraints, priorLessons, workingSource));
+      logPhase("understand", "1 · UNDERSTAND", requirementModel);
+
+      recall = await runPhaseNode(2, () => mode==="demo" ? sleep(shortDelay).then(()=>provider.recall(goal)) : provider.recall(goal));
+      logPhase("recall", "2 · RECALL", recall.display);
+      renderSkillHighlights(recall.relevantSkills.map(s => s.name));
+
+      plan = await runPhaseNode(3, () => mode==="demo" ? sleep(demoDelay).then(()=>provider.plan(requirementModel, recall, priorLessons, workingSource)) : provider.plan(requirementModel, recall, priorLessons, workingSource));
+      logPhase("plan", "3 · PLAN", plan);
+
+      execution = await runPhaseNode(4, () => provider.execute(plan, recall, priorLessons, workingSource, cycle, forceFailFirst && cycle === 1));
+      logPhase("execute", "4 · EXECUTE", execution);
+
+      verification = await runPhaseNode(5, () => mode==="demo" ? sleep(demoDelay).then(()=>provider.verify(requirementModel, execution, threshold)) : provider.verify(requirementModel, execution, threshold));
+      logPhase("verify", "5 · VERIFY", verification);
+    }catch(err){
+      log("ERROR — " + err.message, "bad");
+      finalReport = {status:"ERROR", message: err.message, mode};
+      break;
+    }
+
+    setNodeState("node-gate", "active"); await sleep(shortDelay);
+
+    if (verification.passed){
+      setNodeState("node-gate", "pass"); await sleep(shortDelay);
+      setNodeState("node-release", "pass");
+      memory.episodic.push(makeEntry({status:"SUCCESS", cycle, goal, quality_score: verification.quality_score, mode}));
+      saveMemory(); renderMemory();
+      log("RELEASE — quality " + verification.quality_score + "/100 on cycle " + cycle + " [" + mode + "]", "good");
+      released = true;
+      finalReport = {status:"RELEASE_COMPLETE", cycle, maxCycles, quality_score: verification.quality_score, version, mode};
+      if (mode === "live" && $("autoDeploy").checked){
+        log("auto-deploy is enabled — deploying now.", "meta");
+        try{ await deployToGitHubPages(false); }catch(e){ log("auto-deploy error — " + e.message, "bad"); }
+      }
+      break;
+    }
+
+    setNodeState("node-gate", "fail"); $("branch-fail").classList.add("lit-fail"); await sleep(shortDelay);
+
+    let reflection, learning, experiment, evolution;
+    try{
+      const knownPatterns = memory.failure.slice(-5);
+      reflection = await runPhaseNode(6, () => mode==="demo" ? sleep(demoDelay).then(()=>provider.reflect(verification, execution, knownPatterns, cycle)) : provider.reflect(verification, execution, knownPatterns));
+      logPhase("reflect", "6 · REFLECT", reflection);
+
+      learning = await runPhaseNode(7, () => mode==="demo" ? sleep(demoDelay).then(()=>provider.learn(verification, reflection)) : provider.learn(verification, reflection));
+      logPhase("learn", "7 · LEARN", learning);
+
+      experiment = await runPhaseNode(8, () => mode==="demo" ? sleep(demoDelay).then(()=>provider.experiment(learning, plan, execution)) : provider.experiment(learning, plan, execution));
+      logPhase("experiment", "8 · EXPERIMENT", experiment);
+
+      evolution = await runPhaseNode(9, () => mode==="demo" ? sleep(demoDelay).then(()=>provider.evolve(experiment)) : provider.evolve(experiment));
+      logPhase("evolve", "9 · EVOLVE", evolution);
+    }catch(err){
+      log("ERROR — " + err.message, "bad");
+      finalReport = {status:"ERROR", message: err.message, mode};
+      break;
+    }
+
+    if (evolution.confirmed){ version = bumpVersion(version); $("version-badge").textContent = version; saveVersion(); }
+
+    const classification = MEM_TYPES.indexOf(learning.classification) !== -1 ? learning.classification : "knowledge";
+    await runPhaseNode(10, async () => {
+      memory.failure.push(makeEntry(Object.assign({}, reflection, {mode})));
+      memory[classification].push(makeEntry(Object.assign({}, learning, {mode})));
+      memory.episodic.push(makeEntry({status:"EVOLVING", cycle, goal, mode}));
+      saveMemory();
+      return {persisted_to: ["failure", classification, "episodic"], version};
+    });
+    logPhase("remember", "10 · REMEMBER", {persisted_to: ["failure", classification, "episodic"], version});
+    renderMemory();
+
+    priorLessons.push({from_cycle: cycle, lesson: learning.lesson, corrective_strategy: reflection.corrective_strategy});
+    workingSource = execution.product_html; // next cycle enhances THIS attempt, not the pristine original
+
+    $("branch-loop").classList.add("lit-loop");
+    log("no release yet — looping back to Phase 1 (agent now " + version + ")", "warn");
+    if (mode === "demo") await sleep(demoDelay);
+  }
+
+  if (!released && (!finalReport || finalReport.status !== "ERROR")){
+    finalReport = {status:"NOT_RELEASED", cycles: maxCycles, version, mode};
+    log("stopped — max cycles (" + maxCycles + ") reached without passing verification", "bad");
+  }
+
+  renderOutcome(finalReport);
+  setControlsDisabled(false);
+  running = false;
+}
+
+function resetAll(){
+  if (running) return;
+  memory = {episodic:[], knowledge:[], failure:[], skill:[], strategy:[]};
+  version = "v1.0";
+  try{ localStorage.removeItem(LS_MEM); localStorage.removeItem(LS_VER); }catch(e){}
+  $("version-badge").textContent = version;
+  $("log").innerHTML = "";
+  resetDiagram();
+  renderMemory();
+  renderSkillHighlights([]);
+  const el = $("outcome"); el.className = "outcome";
+  el.textContent = 'memory cleared — press "run live" for a real run, or "run offline demo" to see the old scripted version.';
+  $("modeBanner").className = "mode-banner"; $("modeBanner").textContent = "no run yet";
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+$("threshold").addEventListener("input", () => { $("threshold-val").textContent = $("threshold").value; });
+loadApiKey();
+loadGhToken();
+loadMemory();
+loadVersion();
+$("version-badge").textContent = version;
+buildMemGrid();
+buildSkillsGrid();
+renderMemory();
+const restoredCount = MEM_TYPES.reduce((a,k) => a + memory[k].length, 0);
+if (restoredCount > 0) log("restored " + restoredCount + " memory entries from a previous session (this browser).", "meta");
+</script>
+</body>
+</html>
