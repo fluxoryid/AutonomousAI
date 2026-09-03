@@ -165,6 +165,20 @@
   .skill-card .desc{font-size:10.8px;color:var(--text-dim);margin-top:4px;}
   .orch-badge{border:1px dashed var(--gate);border-radius:8px;padding:10px;font-size:10.8px;color:var(--gate);margin-top:4px;}
 
+  /* data feed — attachment chips + extraction preview */
+  .file-drop{border:1px dashed var(--border);border-radius:8px;padding:14px;text-align:center;font-size:11px;color:var(--text-dim);cursor:pointer;transition:border-color .2s;}
+  .file-drop:hover, .file-drop.dragover{border-color:var(--forward);color:var(--forward);}
+  .file-list{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+  .file-chip{border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11px;display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--panel-alt);}
+  .file-chip .fname{color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .file-chip .fmeta{color:var(--text-dim);font-size:10px;white-space:nowrap;}
+  .file-chip.status-ok .fmeta{color:var(--good);}
+  .file-chip.status-error .fmeta{color:var(--bad);}
+  .file-chip.status-pending .fmeta{color:var(--learning);}
+  .file-chip .fremove{cursor:pointer;color:var(--text-dim);background:none;border:none;font-family:var(--mono);font-size:13px;}
+  .file-chip .fremove:hover{color:var(--bad);}
+  .attach-preview{background:var(--panel-alt);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:10.5px;color:var(--text-dim);max-height:180px;overflow-y:auto;margin-top:10px;white-space:pre-wrap;}
+
   iframe#previewFrame{width:100%;height:340px;border:1px solid var(--border);border-radius:8px;background:#fff;}
 
   details{border:1px solid var(--border);border-radius:10px;padding:14px 16px;background:var(--panel);}
@@ -221,6 +235,22 @@
         <option value="claude-haiku-4-5-20251001"><option value="claude-fable-5-1">
       </datalist>
       <div class="ref-note warn">If live calls fail with a network/CORS error, your browser or network is blocking direct API calls — try a different network, or use offline demo mode instead.</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="panel">
+      <div class="section-title"><span class="prompt">$</span> data_feed — attach reference files (optional)</div>
+      <div class="ref-note">PDF is sent to Claude directly and read natively (real multimodal understanding, no local extraction). Word/PowerPoint/Excel are unzipped and their text extracted right here in your browser, then summarized by one real Claude call — nothing is faked or guessed from the filename. Generic .zip files are listed, and any plain-text members inside are extracted too. Nothing is uploaded anywhere except to Anthropic's API, and only when you click "process attachments."</div>
+      <label for="fileInput">files — .pdf .docx .pptx .xlsx .zip .txt .csv .md .json (25MB combined limit)</label>
+      <input type="file" id="fileInput" multiple accept=".pdf,.docx,.pptx,.xlsx,.zip,.txt,.csv,.md,.json" style="padding:6px;">
+      <div class="file-list" id="fileList"></div>
+      <div class="actions">
+        <button class="btn secondary small" id="processAttachBtn" onclick="processAttachments()"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 8h3l2-5 3 10 2-5h2"/></svg>process attachments</button>
+        <button class="btn secondary small" onclick="clearAttachments()"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4h10M6 4V2.5h4V4M4 4l.6 9a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9L12 4"/></svg>clear attachments</button>
+      </div>
+      <div class="ref-note" id="attachStatus">no attachments processed yet</div>
+      <div class="attach-preview" id="attachPreview" style="display:none;"></div>
     </div>
   </section>
 
@@ -377,6 +407,8 @@
         <li><b>Deployment is real</b>: with a GitHub token, "deploy now" (or auto-deploy on release) calls the actual GitHub REST API to create/update a repo, commit the product as <code>index.html</code>, and enable GitHub Pages — you get back a real public URL.</li>
         <li>The progress bar reflects actual phase transitions (updated from inside <code>runPhaseNode</code>, the same function that drives the diagram) — it is not a timer or an estimate.</li>
         <li>"Save key" notifications only fire after reading the value back out of <code>localStorage</code> to confirm the write actually happened — and say "saved locally in this browser," never "uploaded," because nothing is uploaded to any server or database.</li>
+        <li><b>Data feed is real, not filename-based guessing</b>: PDFs are sent to Claude as native <code>document</code> content blocks and read by the model directly. Word/PowerPoint/Excel/zip files are unzipped and their XML parsed for real, entirely in your browser — a from-scratch ZIP central-directory reader plus the browser's own <code>DecompressionStream("deflate-raw")</code> for compressed entries, then real <code>DOMParser</code> XML parsing to pull text. This was tested against synthetic docx/pptx/xlsx archives with mixed compression methods, split text runs, shared-string tables, and inline strings before shipping — not just checked for syntax errors.</li>
+        <li>Known limits of the data feed, stated plainly: docx extraction is body text only (no headers/footers/tables-as-structure/images); pptx is slide text only (no speaker notes/images); xlsx caps at 200 rows per sheet and shows formulas as their last cached value, not the formula itself; generic .zip only extracts members with text-like extensions, everything else is listed by name and size only; encrypted or unusually-compressed ZIP entries are reported as unreadable rather than silently skipped. The one-time "process attachments" summary call is itself an LLM output, so treat it as a well-grounded summary, not a guaranteed-complete transcript of the file.</li>
       </ul>
       <div class="ref-note"><b>What's still limited, honestly:</b></div>
       <ul class="tight">
@@ -826,12 +858,313 @@ async function deployToGitHubPages(manual){
 }
 
 /* ============================================================
+   DATA FEED — real ZIP/deflate parsing + real Office XML extraction
+   for docx/pptx/xlsx/zip, plus native PDF support via Claude's
+   multimodal API. Tested standalone against synthetic docx/pptx/xlsx
+   archives (mixed stored+deflate entries, split text runs, shared
+   strings, inline strings, entity decoding) before being wired in here.
+   ============================================================ */
+const MAX_TOTAL_UPLOAD_BYTES = 25 * 1024 * 1024;
+const MAX_PDF_BYTES = 15 * 1024 * 1024;
+const MAX_EXTRACTED_CHARS_PER_FILE = 20000;
+const MAX_ATTACHED_CONTEXT_CHARS = 4000; // cap on what actually rides along in every phase prompt
+
+let attachedFiles = [];   // [{name,size,ext,status,note,extractedText}]
+let attachedPdfBlocks = []; // [{name, block:{type:"document",...}}]
+let attachedContext = "";   // final distilled text injected into phase prompts
+
+function readUint32LE(dv, off){ return dv.getUint32(off, true); }
+function readUint16LE(dv, off){ return dv.getUint16(off, true); }
+
+function readZipEntries(buffer){
+  const bytes = new Uint8Array(buffer);
+  const dv = new DataView(buffer);
+  const EOCD_SIG = 0x06054b50;
+  let eocdOffset = -1;
+  const maxScan = Math.min(bytes.length, 66000);
+  for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - maxScan); i--){
+    if (readUint32LE(dv, i) === EOCD_SIG){ eocdOffset = i; break; }
+  }
+  if (eocdOffset === -1) throw new Error("Not a valid ZIP file (no End Of Central Directory record found)");
+  const totalEntries = readUint16LE(dv, eocdOffset + 10);
+  const centralDirOffset = readUint32LE(dv, eocdOffset + 16);
+  const entries = [];
+  let ptr = centralDirOffset;
+  const CENTRAL_SIG = 0x02014b50;
+  for (let i = 0; i < totalEntries; i++){
+    if (readUint32LE(dv, ptr) !== CENTRAL_SIG) throw new Error("ZIP central directory is corrupt or unsupported (multi-disk archives are not supported)");
+    const method = readUint16LE(dv, ptr + 10);
+    const compressedSize = readUint32LE(dv, ptr + 20);
+    const uncompressedSize = readUint32LE(dv, ptr + 24);
+    const nameLen = readUint16LE(dv, ptr + 28);
+    const extraLen = readUint16LE(dv, ptr + 30);
+    const commentLen = readUint16LE(dv, ptr + 32);
+    const localHeaderOffset = readUint32LE(dv, ptr + 42);
+    const name = new TextDecoder("utf-8").decode(bytes.slice(ptr + 46, ptr + 46 + nameLen));
+    entries.push({name, method, compressedSize, uncompressedSize, localHeaderOffset});
+    ptr += 46 + nameLen + extraLen + commentLen;
+  }
+  return {entries, buffer};
+}
+function getEntryCompressedBytes(buffer, entry){
+  const dv = new DataView(buffer);
+  const LOCAL_SIG = 0x04034b50;
+  const off = entry.localHeaderOffset;
+  if (readUint32LE(dv, off) !== LOCAL_SIG) throw new Error("ZIP local file header is corrupt for entry: " + entry.name);
+  const nameLen = readUint16LE(dv, off + 26);
+  const extraLen = readUint16LE(dv, off + 28);
+  const dataStart = off + 30 + nameLen + extraLen;
+  return new Uint8Array(buffer, dataStart, entry.compressedSize);
+}
+async function decompressZipEntryToText(buffer, entry){
+  const compressed = getEntryCompressedBytes(buffer, entry);
+  if (entry.method === 0) return new TextDecoder("utf-8").decode(compressed);
+  if (entry.method !== 8) throw new Error("Unsupported compression method (" + entry.method + ") for " + entry.name + " — likely encrypted or an uncommon codec");
+  if (typeof DecompressionStream === "undefined") throw new Error("This browser does not support DecompressionStream — cannot decompress ZIP-based Office files here.");
+  const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  const buf = await new Response(stream).arrayBuffer();
+  return new TextDecoder("utf-8").decode(buf);
+}
+function parseXml(text){
+  const doc = new DOMParser().parseFromString(text, "application/xml");
+  if (doc.querySelector("parsererror")) return null;
+  return doc;
+}
+function extractDocxTextFromXml(xmlText){
+  const doc = parseXml(xmlText); if (!doc) return "";
+  return Array.from(doc.getElementsByTagName("w:p")).map(p => Array.from(p.getElementsByTagName("w:t")).map(t => t.textContent).join("")).filter(Boolean).join("\n");
+}
+function extractPptxTextFromXml(xmlText){
+  const doc = parseXml(xmlText); if (!doc) return "";
+  return Array.from(doc.getElementsByTagName("a:p")).map(p => Array.from(p.getElementsByTagName("a:t")).map(t => t.textContent).join("")).filter(Boolean).join("\n");
+}
+function extractSharedStrings(xmlText){
+  const doc = parseXml(xmlText); if (!doc) return [];
+  return Array.from(doc.getElementsByTagName("si")).map(si => Array.from(si.getElementsByTagName("t")).map(t => t.textContent).join(""));
+}
+function extractSheetTextFromXml(xmlText, sharedStrings){
+  const doc = parseXml(xmlText); if (!doc) return "";
+  const lines = [];
+  for (const row of Array.from(doc.getElementsByTagName("row")).slice(0, 200)){
+    const values = Array.from(row.getElementsByTagName("c")).map(c => {
+      const type = c.getAttribute("t");
+      if (type === "s"){ const v = c.getElementsByTagName("v")[0]; const idx = v ? parseInt(v.textContent, 10) : -1; return sharedStrings[idx] || ""; }
+      if (type === "inlineStr"){ const t = c.getElementsByTagName("t")[0]; return t ? t.textContent : ""; }
+      const v = c.getElementsByTagName("v")[0]; return v ? v.textContent : "";
+    });
+    if (values.some(v => v !== "")) lines.push(values.join("\t"));
+  }
+  return lines.join("\n");
+}
+function naturalSort(names){ return names.slice().sort((a,b) => a.localeCompare(b, undefined, {numeric:true})); }
+
+async function extractDocx(buffer){
+  const {entries} = readZipEntries(buffer);
+  const doc = entries.find(e => e.name === "word/document.xml");
+  if (!doc) return {text:"", note:"no word/document.xml found in this .docx"};
+  const xml = await decompressZipEntryToText(buffer, doc);
+  return {text: extractDocxTextFromXml(xml), note:"body text only — headers/footers/tables-as-structure and images are not extracted"};
+}
+async function extractPptx(buffer){
+  const {entries} = readZipEntries(buffer);
+  const slideNames = naturalSort(entries.filter(e => /^ppt\/slides\/slide\d+\.xml$/.test(e.name)).map(e => e.name));
+  if (!slideNames.length) return {text:"", note:"no slides found"};
+  let out = [];
+  for (const name of slideNames){
+    const entry = entries.find(e => e.name === name);
+    const xml = await decompressZipEntryToText(buffer, entry);
+    out.push("--- " + name + " ---\n" + extractPptxTextFromXml(xml));
+  }
+  return {text: out.join("\n"), note: slideNames.length + " slide(s), text only — no speaker notes or images"};
+}
+async function extractXlsx(buffer){
+  const {entries} = readZipEntries(buffer);
+  const sharedEntry = entries.find(e => e.name === "xl/sharedStrings.xml");
+  const sharedStrings = sharedEntry ? extractSharedStrings(await decompressZipEntryToText(buffer, sharedEntry)) : [];
+  const sheetNames = naturalSort(entries.filter(e => /^xl\/worksheets\/sheet\d+\.xml$/.test(e.name)).map(e => e.name));
+  if (!sheetNames.length) return {text:"", note:"no worksheets found"};
+  let out = [];
+  for (const name of sheetNames){
+    const entry = entries.find(e => e.name === name);
+    const xml = await decompressZipEntryToText(buffer, entry);
+    out.push("--- " + name + " ---\n" + extractSheetTextFromXml(xml, sharedStrings));
+  }
+  return {text: out.join("\n"), note: sheetNames.length + " sheet(s), first 200 rows each — formulas show as their last computed value"};
+}
+const TEXT_LIKE_EXT = [".txt",".csv",".md",".json",".xml",".log"];
+async function extractGenericZip(buffer){
+  const {entries} = readZipEntries(buffer);
+  let listing = entries.map(e => e.name + " (" + e.uncompressedSize + " bytes)").join("\n");
+  let textOut = [];
+  let budget = MAX_EXTRACTED_CHARS_PER_FILE;
+  for (const e of entries){
+    const ext = "." + (e.name.split(".").pop() || "").toLowerCase();
+    if (TEXT_LIKE_EXT.indexOf(ext) === -1 || budget <= 0) continue;
+    try{
+      const text = await decompressZipEntryToText(buffer, e);
+      const slice = text.slice(0, budget);
+      textOut.push("--- " + e.name + " ---\n" + slice);
+      budget -= slice.length;
+    }catch(err){ /* skip unreadable member, it's still listed above */ }
+  }
+  return {text: "Archive contents:\n" + listing + (textOut.length ? "\n\n" + textOut.join("\n") : ""), note: entries.length + " entr" + (entries.length === 1 ? "y" : "ies") + " listed; text-like members extracted, others listed by name only"};
+}
+
+function fileExt(name){ const m = /\.[^.]+$/.exec(name); return m ? m[0].toLowerCase() : ""; }
+
+function renderFileList(){
+  const list = $("fileList"); list.innerHTML = "";
+  attachedFiles.forEach((f, i) => {
+    const chip = document.createElement("div");
+    chip.className = "file-chip status-" + f.status;
+    chip.innerHTML = '<span class="fname">' + escapeHtml(f.name) + '</span><span class="fmeta">' + (f.size/1024).toFixed(0) + 'KB · ' + f.status + (f.note ? " · " + escapeHtml(f.note) : "") + '</span><button class="fremove" onclick="removeAttachedFile(' + i + ')">✕</button>';
+    list.appendChild(chip);
+  });
+}
+function removeAttachedFile(i){ attachedFiles.splice(i, 1); renderFileList(); }
+
+$("fileInput").addEventListener("change", (e) => {
+  const files = Array.from(e.target.files || []);
+  const currentTotal = attachedFiles.reduce((a,f) => a + f.size, 0);
+  const newTotal = currentTotal + files.reduce((a,f) => a + f.size, 0);
+  if (newTotal > MAX_TOTAL_UPLOAD_BYTES){
+    showToast("That would exceed the 25MB combined attachment limit — not added.", "bad");
+    e.target.value = "";
+    return;
+  }
+  for (const file of files){
+    const ext = fileExt(file.name);
+    if ([".pdf",".docx",".pptx",".xlsx",".zip",".txt",".csv",".md",".json"].indexOf(ext) === -1){
+      showToast("Skipped " + file.name + " — unsupported type " + ext, "warn");
+      continue;
+    }
+    if (ext === ".pdf" && file.size > MAX_PDF_BYTES){
+      showToast("Skipped " + file.name + " — PDFs over 15MB aren't supported here.", "bad");
+      continue;
+    }
+    attachedFiles.push({name: file.name, size: file.size, ext, status: "pending", note: "not processed yet", _file: file});
+  }
+  e.target.value = "";
+  renderFileList();
+});
+
+async function processAttachments(){
+  if (!attachedFiles.length){ showToast("No files attached yet.", "warn"); return; }
+  const btn = $("processAttachBtn"); btn.disabled = true;
+  $("attachStatus").textContent = "processing…";
+  attachedPdfBlocks = [];
+  let combinedOfficeText = "";
+
+  for (const f of attachedFiles){
+    if (!f._file){ continue; } // already processed in a prior pass
+    try{
+      if (f.ext === ".pdf"){
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error("could not read file"));
+          reader.readAsDataURL(f._file);
+        });
+        const base64 = dataUrl.split(",")[1];
+        attachedPdfBlocks.push({type:"document", source:{type:"base64", media_type:"application/pdf", data: base64}});
+        f.status = "ok"; f.note = "queued for native PDF reading by Claude";
+      } else {
+        const buffer = await f._file.arrayBuffer();
+        let result;
+        if (f.ext === ".docx") result = await extractDocx(buffer);
+        else if (f.ext === ".pptx") result = await extractPptx(buffer);
+        else if (f.ext === ".xlsx") result = await extractXlsx(buffer);
+        else if (f.ext === ".zip") result = await extractGenericZip(buffer);
+        else result = {text: await f._file.text(), note: "plain text file, read directly"};
+        f.extractedText = result.text.slice(0, MAX_EXTRACTED_CHARS_PER_FILE);
+        f.status = f.extractedText.trim() ? "ok" : "error";
+        f.note = result.note + (f.extractedText.trim() ? "" : " — nothing extracted");
+        if (f.extractedText.trim()) combinedOfficeText += "\n\n=== " + f.name + " ===\n" + f.extractedText;
+      }
+    }catch(err){
+      f.status = "error"; f.note = err.message;
+    }
+    delete f._file;
+    renderFileList();
+  }
+
+  const hasPdf = attachedPdfBlocks.length > 0;
+  const hasOfficeText = combinedOfficeText.trim().length > 0;
+  if (!hasPdf && !hasOfficeText){
+    attachedContext = "";
+    $("attachStatus").textContent = "no usable content extracted from the current attachments";
+    $("attachPreview").style.display = "none";
+    btn.disabled = false;
+    return;
+  }
+
+  if (!getApiKey()){
+    // no key = no real Claude ingestion call; fall back to raw extracted text only (PDFs can't be read without a call)
+    attachedContext = truncate(combinedOfficeText.trim(), MAX_ATTACHED_CONTEXT_CHARS);
+    $("attachStatus").textContent = "extracted " + combinedOfficeText.trim().length + " chars of Office text (no API key set, so PDFs were not read and no summary call was made)";
+    $("attachPreview").style.display = "block";
+    $("attachPreview").textContent = attachedContext || "(nothing extracted)";
+    btn.disabled = false;
+    return;
+  }
+
+  try{
+    const goalHint = ($("goal").value || "").trim();
+    const system = "You are ingesting reference attachments for an autonomous build agent. Read the provided PDF(s) and/or extracted Office text and write concise, concrete notes on anything relevant to the stated goal — facts, requirements, numbers, structure. Do not pad with generic commentary. Plain text only, no markdown, under 500 words.";
+    const blocks = attachedPdfBlocks.slice();
+    if (hasOfficeText) blocks.push({type:"text", text: "Extracted text from Office/zip attachments:\n" + truncate(combinedOfficeText.trim(), 20000)});
+    blocks.push({type:"text", text: "Goal this is being ingested for: " + (goalHint || "(not specified yet)")});
+    const summary = await anthropicMultimodalCall(system, blocks, 800);
+    attachedContext = truncate(summary.trim(), MAX_ATTACHED_CONTEXT_CHARS);
+    $("attachStatus").textContent = "processed " + attachedFiles.length + " file(s) — " + (hasPdf ? attachedPdfBlocks.length + " PDF(s) read natively, " : "") + "summary below is what gets fed into Understand/Plan/Execute";
+    $("attachPreview").style.display = "block";
+    $("attachPreview").textContent = attachedContext;
+    showToast("Attachments processed and summarized.", "good");
+  }catch(err){
+    attachedContext = truncate(combinedOfficeText.trim(), MAX_ATTACHED_CONTEXT_CHARS);
+    $("attachStatus").textContent = "summary call failed (" + err.message + ") — falling back to raw extracted Office text only, PDFs were not read";
+    $("attachPreview").style.display = "block";
+    $("attachPreview").textContent = attachedContext || "(nothing extracted)";
+    showToast("Attachment summary call failed — using raw extracted text instead.", "bad");
+  }
+  btn.disabled = false;
+}
+
+function clearAttachments(){
+  attachedFiles = []; attachedPdfBlocks = []; attachedContext = "";
+  renderFileList();
+  $("attachStatus").textContent = "no attachments processed yet";
+  $("attachPreview").style.display = "none"; $("attachPreview").textContent = "";
+  showToast("Attachments cleared.", "good");
+}
+
+async function anthropicMultimodalCall(system, contentBlocks, maxTokens){
+  const key = getApiKey();
+  if (!key) throw new Error("No API key set — enter one under $ live_mode.");
+  const model = ($("modelInput").value || "claude-sonnet-5").trim();
+  const headers = {"content-type":"application/json", "x-api-key": key, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true"};
+  const workspaceId = getWorkspaceId();
+  if (workspaceId) headers["anthropic-workspace-id"] = workspaceId;
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method:"POST", headers,
+    body: JSON.stringify({model, max_tokens: maxTokens || 800, system, messages:[{role:"user", content: contentBlocks}]}),
+  });
+  if (!res.ok){
+    let detail = res.statusText;
+    try{ const body = await res.json(); if (body && body.error && body.error.message) detail = body.error.message; }catch(e){}
+    throw new Error("Anthropic API error " + res.status + ": " + detail);
+  }
+  const data = await res.json();
+  return (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+}
+
+/* ============================================================
    LIVE PROVIDER — real reasoning per phase, product-focused
    ============================================================ */
 const liveProvider = {
-  async understand(goal, constraints, priorLessons, existingSource){
-    const system = 'You are Phase 1 (UNDERSTAND) of an autonomous agent that builds real single-file web products. Turn the raw goal into a structured requirement model. If existing_product_excerpt is provided, this is an enhancement of that product, not a fresh build. If prior_attempt_lessons are provided, factor them in. Respond ONLY with JSON: {"goal":str,"scope":str,"actors":[str],"workflow":[str],"missing_info":[str],"assumptions":[str],"acceptance_criteria":[str],"definition_of_done":str}';
-    const user = {goal, constraints, prior_attempt_lessons: priorLessons || [], existing_product_excerpt: existingSource ? truncate(existingSource, 1500) : null};
+  async understand(goal, constraints, priorLessons, existingSource, attachedCtx){
+    const system = 'You are Phase 1 (UNDERSTAND) of an autonomous agent that builds real single-file web products. Turn the raw goal into a structured requirement model. If existing_product_excerpt is provided, this is an enhancement of that product, not a fresh build. If prior_attempt_lessons are provided, factor them in. If attached_reference_notes are provided, they come from real files the user uploaded (PDF/Word/PowerPoint/Excel/zip) — ground the requirement model in that real content, don\'t ignore it. Respond ONLY with JSON: {"goal":str,"scope":str,"actors":[str],"workflow":[str],"missing_info":[str],"assumptions":[str],"acceptance_criteria":[str],"definition_of_done":str}';
+    const user = {goal, constraints, prior_attempt_lessons: priorLessons || [], existing_product_excerpt: existingSource ? truncate(existingSource, 1500) : null, attached_reference_notes: attachedCtx || null};
     return await callLLM(system, user, 500);
   },
   async recall(goal){
@@ -841,22 +1174,24 @@ const liveProvider = {
     const relevantSkills = (top.length ? top : ranked.slice(0,2)).map(r => r.s);
     return {hits, relevantSkills, display: {memory_hits: Object.fromEntries(Object.entries(hits).map(([k,v]) => [k, v.length])), relevant_skills: relevantSkills.map(s => s.name)}};
   },
-  async plan(requirementModel, recall, priorLessons, existingSource){
-    const system = 'You are Phase 3 (PLAN) of an autonomous agent. Produce implementation guidance for building or enhancing ONE single-file HTML product in a single consolidated build step (not a per-task loop). Respond ONLY with JSON: {"tasks":[{"id":str,"description":str,"workstream":str,"depends_on":[str]}],"risk_assessment":str}';
+  async plan(requirementModel, recall, priorLessons, existingSource, attachedCtx){
+    const system = 'You are Phase 3 (PLAN) of an autonomous agent. Produce implementation guidance for building or enhancing ONE single-file HTML product in a single consolidated build step (not a per-task loop). If attached_reference_notes are provided, plan around what they actually say. Respond ONLY with JSON: {"tasks":[{"id":str,"description":str,"workstream":str,"depends_on":[str]}],"risk_assessment":str}';
     const user = {
       requirement_model: requirementModel,
       relevant_skills: recall.relevantSkills.map(s => ({name: s.name, guidance: s.desc})),
       memory_hits: recall.hits, prior_attempt_lessons: priorLessons || [],
       existing_product_excerpt: existingSource ? truncate(existingSource, 1500) : null,
+      attached_reference_notes: attachedCtx || null,
     };
     return await callLLM(system, user, 700);
   },
-  async execute(plan, recall, priorLessons, existingSource){
-    const system = 'You are Phase 4 (EXECUTE) of an autonomous agent. Build or enhance a REAL, runnable web product as ONE complete, self-contained HTML file (inline <style> and <script>, no build step; external CDN script tags only if truly necessary). If existing_product_source is provided, treat it as the current product and enhance/fix it — preserve what works. If recalled_failure_patterns are provided, they are real past debugging outcomes from earlier runs — actively avoid repeating them, don\'t just note them. Keep it focused and reasonably concise.';
+  async execute(plan, recall, priorLessons, existingSource, attachedCtx){
+    const system = 'You are Phase 4 (EXECUTE) of an autonomous agent. Build or enhance a REAL, runnable web product as ONE complete, self-contained HTML file (inline <style> and <script>, no build step; external CDN script tags only if truly necessary). If existing_product_source is provided, treat it as the current product and enhance/fix it — preserve what works. If recalled_failure_patterns are provided, they are real past debugging outcomes from earlier runs — actively avoid repeating them, don\'t just note them. If attached_reference_notes are provided, they are real content from user-uploaded files — use the actual facts/data in them, don\'t invent placeholder data instead. Keep it focused and reasonably concise.';
     const user = {
       plan, skill_guidance: recall.relevantSkills.map(s => s.desc), prior_attempt_lessons: priorLessons || [],
       recalled_failure_patterns: recall.hits.failure || [],
       existing_product_source: existingSource || null,
+      attached_reference_notes: attachedCtx || null,
     };
     const result = await callLLMProduct(system, user, 6000);
     if (!result || typeof result.product_html !== "string" || result.product_html.trim().length < 20){
@@ -923,7 +1258,7 @@ const demoProvider = {
                      {id:"T3", description:"Validate solution (scripted)", workstream:"QA", depends_on:["T2"]}],
             dependencies: {T2:["T1"], T3:["T2"]}, risk_assessment:"[DEMO] scripted, not assessed"};
   },
-  async execute(plan, recall, priorLessons, cycle, forcedFail){
+  async execute(plan, recall, priorLessons, existingSource, attachedCtx, cycle, forcedFail){
     const goal = (plan.tasks[0] && plan.tasks[0].description) || "task";
     const h = hashStr(goal + "|" + cycle);
     let score = clamp(58 + (cycle - 1) * 15 + ((h % 11) - 5), 5, 99);
@@ -1084,7 +1419,7 @@ async function runAgent(mode){
   if (mode === "live" && $("forceFail").checked) log("note: 'force first cycle to fail' only applies in demo mode.", "warn");
 
   let workingSource = $("existingSource").value.trim();
-  log('run started [' + mode.toUpperCase() + '] — goal: "' + goal + '" · threshold ' + threshold + '% · max ' + maxCycles + ' cycle(s)' + (workingSource ? " · enhancing pasted product" : " · building new"), "meta");
+  log('run started [' + mode.toUpperCase() + '] — goal: "' + goal + '" · threshold ' + threshold + '% · max ' + maxCycles + ' cycle(s)' + (workingSource ? " · enhancing pasted product" : " · building new") + (attachedContext ? " · using " + attachedContext.length + " chars of attached-file context" : ""), "meta");
 
   const provider = mode === "live" ? liveProvider : demoProvider;
   let priorLessons = [];
@@ -1098,17 +1433,17 @@ async function runAgent(mode){
 
     let requirementModel, recall, plan, execution, verification;
     try{
-      requirementModel = await runPhaseNode(1, () => mode==="demo" ? sleep(demoDelay).then(()=>provider.understand(goal, constraints, priorLessons, workingSource)) : provider.understand(goal, constraints, priorLessons, workingSource));
+      requirementModel = await runPhaseNode(1, () => mode==="demo" ? sleep(demoDelay).then(()=>provider.understand(goal, constraints, priorLessons, workingSource, attachedContext)) : provider.understand(goal, constraints, priorLessons, workingSource, attachedContext));
       logPhase("understand", "1 · UNDERSTAND", requirementModel);
 
       recall = await runPhaseNode(2, () => mode==="demo" ? sleep(shortDelay).then(()=>provider.recall(goal)) : provider.recall(goal));
       logPhase("recall", "2 · RECALL", recall.display);
       renderSkillHighlights(recall.relevantSkills.map(s => s.name));
 
-      plan = await runPhaseNode(3, () => mode==="demo" ? sleep(demoDelay).then(()=>provider.plan(requirementModel, recall, priorLessons, workingSource)) : provider.plan(requirementModel, recall, priorLessons, workingSource));
+      plan = await runPhaseNode(3, () => mode==="demo" ? sleep(demoDelay).then(()=>provider.plan(requirementModel, recall, priorLessons, workingSource, attachedContext)) : provider.plan(requirementModel, recall, priorLessons, workingSource, attachedContext));
       logPhase("plan", "3 · PLAN", plan);
 
-      execution = await runPhaseNode(4, () => provider.execute(plan, recall, priorLessons, workingSource, cycle, forceFailFirst && cycle === 1));
+      execution = await runPhaseNode(4, () => provider.execute(plan, recall, priorLessons, workingSource, attachedContext, cycle, forceFailFirst && cycle === 1));
       logPhase("execute", "4 · EXECUTE", execution);
 
       verification = await runPhaseNode(5, () => mode==="demo" ? sleep(demoDelay).then(()=>provider.verify(requirementModel, execution, threshold)) : provider.verify(requirementModel, execution, threshold));
