@@ -4,48 +4,56 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>autonomous_learning_agent :: console</title>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.577.0/dist/umd/lucide.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0A0E17; --panel:#111826; --panel-alt:#0D1420; --border:#232C3D;
-    --text:#E7ECF3; --text-dim:#8B97AC; --forward:#49D3C4; --learning:#F2A65A;
-    --good:#5FDD8E; --bad:#F1715F; --gate:#C9A6FF;
-    --mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+    --bg:#F5F8FB; --panel:#FFFFFF; --panel-alt:#EEF3F8; --border:#DCE5ED;
+    --text:#071525; --text-dim:#617083; --forward:#0D5BCF; --learning:#8F5A0D;
+    --good:#237043; --bad:#B5342F; --gate:#7558E8; --forward-bright:#14C7D9;
+    --mono: "Space Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: "DM Sans", -apple-system, "Segoe UI", sans-serif;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
-  body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:14px;line-height:1.5;padding:28px 20px 60px;
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5;padding:28px 20px 60px;
     background-image:
-      linear-gradient(rgba(73,211,196,0.035) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(73,211,196,0.035) 1px, transparent 1px);
+      linear-gradient(rgba(13,91,207,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(13,91,207,0.035) 1px, transparent 1px);
     background-size:28px 28px;
   }
   a{color:var(--forward);}
   .wrap{max-width:1180px;margin:0 auto;}
 
   header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:18px;margin-bottom:22px;}
-  header h1{font-size:17px;margin:0 0 6px;font-weight:700;letter-spacing:.2px;}
-  header h1 .prompt{color:var(--forward);}
+  header h1{font-size:19px;margin:0 0 6px;font-weight:700;letter-spacing:.2px;color:var(--text);}
+  header h1 .prompt{color:var(--gate);}
   header p{margin:0;color:var(--text-dim);font-size:12px;max-width:680px;}
   .badges{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
-  .badge{border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;color:var(--text-dim);white-space:nowrap;}
-  .badge.version{color:var(--forward);border-color:var(--forward);}
+  .badge{border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;color:var(--text-dim);white-space:nowrap;font-family:var(--mono);}
+  .badge.version{background:var(--forward-bright);color:#071525;border:none;font-weight:700;}
   .badge.status{display:flex;align-items:center;gap:6px;}
   .dot{width:7px;height:7px;border-radius:50%;background:var(--text-dim);}
-  .dot.busy{background:var(--learning);box-shadow:0 0 8px var(--learning);animation:blink 1s infinite;}
-  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+  .dot.busy{background:var(--forward-bright);box-shadow:0 0 8px var(--forward-bright);animation:ping 1.15s infinite;}
+  .dot.done{background:var(--good);box-shadow:0 0 6px var(--good);}
+  @keyframes ping{50%{box-shadow:0 0 0 6px rgba(20,199,217,.18);}}
+
+  .reveal{animation:reveal .5s ease both;}
+  @keyframes reveal{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+  @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;}}
 
   section{margin-bottom:26px;}
   .section-title{font-size:12px;color:var(--text-dim);margin:0 0 12px;display:flex;align-items:center;gap:8px;}
   .section-title .prompt{color:var(--forward);}
 
   .sources{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px;}
-  .source-chip{border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--text-dim);flex:1 1 260px;}
+  .source-chip{border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--text-dim);flex:1 1 260px;font-family:var(--mono);}
   .source-chip b{color:var(--text);display:block;font-size:11.5px;margin-bottom:2px;}
 
   .diagram-legend{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px;font-size:11px;color:var(--text-dim);}
   .diagram-legend span{display:inline-flex;align-items:center;gap:6px;}
   .legend-dot{width:9px;height:9px;border-radius:2px;display:inline-block;}
-  .loop-diagram{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:var(--panel-alt);padding:20px 20px 10px;}
+  .loop-diagram{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:var(--panel-alt);padding:20px 20px 10px;font-family:var(--mono);}
   .loop-row{display:flex;align-items:stretch;min-width:1040px;}
   .arrow{flex:0 0 26px;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:16px;}
   .node{flex:0 0 132px;border:1px solid var(--border);border-radius:8px;background:var(--panel);padding:10px 8px;text-align:center;transition:box-shadow .25s, border-color .25s, opacity .25s;position:relative;}
@@ -74,7 +82,7 @@
 
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
   @media (max-width:880px){.grid2{grid-template-columns:1fr;}}
-  .panel{border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:16px;}
+  .panel{border:1px solid var(--border);border-radius:14px;background:var(--panel);padding:16px;box-shadow:0 16px 38px rgba(7,21,37,.045);animation:reveal .5s ease both;}
 
   label{display:block;font-size:11px;color:var(--text-dim);margin:12px 0 5px;}
   label:first-child{margin-top:0;}
@@ -84,38 +92,113 @@
     border-radius:6px;padding:8px;font-family:var(--mono);font-size:12px;
   }
   textarea{resize:vertical;min-height:52px;}
-  input[type=range]{width:100%;accent-color:var(--forward);}
+  textarea:focus, input[type=text]:focus, input[type=number]:focus, input[type=password]:focus{
+    outline:none; border-color:var(--forward); box-shadow:0 0 0 3px rgba(13,91,207,.15);
+  }
+
+  input[type=range]{
+    -webkit-appearance:none; appearance:none; width:100%; height:4px; border-radius:3px;
+    background:var(--panel-alt); border:1px solid var(--border); accent-color:var(--forward); cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:15px; height:15px; border-radius:50%; background:var(--forward);
+    box-shadow:0 0 8px rgba(13,91,207,.65), 0 0 0 3px rgba(13,91,207,.15); cursor:pointer;
+    margin-top:-6px; transition:box-shadow .2s ease, transform .15s ease;
+  }
+  input[type=range]::-webkit-slider-thumb:hover{ box-shadow:0 0 12px rgba(13,91,207,.85), 0 0 0 4px rgba(13,91,207,.2); transform:scale(1.08); }
+  input[type=range]::-moz-range-track{ height:4px; border-radius:3px; background:var(--panel-alt); border:1px solid var(--border); }
+  input[type=range]::-moz-range-thumb{
+    width:15px; height:15px; border-radius:50%; background:var(--forward); border:none;
+    box-shadow:0 0 8px rgba(13,91,207,.65); cursor:pointer;
+  }
+
+  /* toggle switches — replace default checkbox appearance, zero JS/behavior change */
+  input[type=checkbox].toggle{
+    -webkit-appearance:none; appearance:none; width:34px; height:18px; flex-shrink:0;
+    background:var(--panel-alt); border:1px solid var(--border); border-radius:999px;
+    position:relative; cursor:pointer; margin:0; vertical-align:middle;
+    transition:background .2s ease, border-color .2s ease;
+  }
+  input[type=checkbox].toggle::after{
+    content:''; position:absolute; top:1px; left:1px; width:14px; height:14px; border-radius:50%;
+    background:var(--text-dim); transition:transform .2s ease, background .2s ease, box-shadow .2s ease;
+  }
+  input[type=checkbox].toggle:checked{ background:rgba(13,91,207,.16); border-color:var(--forward); }
+  input[type=checkbox].toggle:checked::after{ transform:translateX(16px); background:var(--forward); box-shadow:0 0 6px rgba(13,91,207,.7); }
+  input[type=checkbox].toggle:focus-visible{ box-shadow:0 0 0 3px rgba(13,91,207,.25); }
+
+  label.field-label{display:flex;align-items:center;gap:6px;}
+  label.field-label svg{flex:0 0 auto;color:var(--text-dim);}
+
+  .check-row{display:flex;align-items:flex-start;gap:7px;font-size:11.5px;line-height:1.5;font-family:var(--mono);}
+  .check-row svg{flex:0 0 auto;margin-top:2px;}
+  .check-row b{font-weight:700;}
+
   .row-inline{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;align-items:center;}
   .check{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text-dim);}
   .actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;}
   .btn{
-    background:linear-gradient(135deg, var(--forward), #2fb3a3);color:#04211D;border:none;padding:10px 18px;
+    background:linear-gradient(135deg, var(--forward), #1668E8);color:#FFFFFF;border:none;padding:10px 18px;
     border-radius:8px;font-weight:700;font-family:var(--mono);font-size:12px;cursor:pointer;
     display:inline-flex;align-items:center;gap:7px;transition:transform .15s ease, box-shadow .15s ease, filter .15s ease;
-    box-shadow:0 1px 0 rgba(0,0,0,.2), 0 0 0 1px rgba(73,211,196,.25);
+    box-shadow:0 1px 0 rgba(0,0,0,.2), 0 0 0 1px rgba(13,91,207,.25);
   }
   .btn svg{flex:0 0 auto;}
-  .btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 14px -4px rgba(73,211,196,.55), 0 0 0 1px rgba(73,211,196,.4);filter:brightness(1.03);}
+  .btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 14px -4px rgba(13,91,207,.55), 0 0 0 1px rgba(13,91,207,.4);filter:brightness(1.03);}
   .btn:active:not(:disabled){transform:translateY(0);}
   .btn.secondary{background:var(--panel-alt);border:1px solid var(--border);color:var(--text);box-shadow:none;}
-  .btn.secondary:hover:not(:disabled){border-color:var(--forward);color:var(--forward);box-shadow:0 0 0 1px rgba(73,211,196,.25);}
-  .btn.danger.secondary:hover:not(:disabled){border-color:var(--bad);color:var(--bad);box-shadow:0 0 0 1px rgba(241,113,95,.25);}
+  .btn.secondary:hover:not(:disabled){border-color:var(--forward);color:var(--forward);box-shadow:0 0 0 1px rgba(13,91,207,.25);}
+  .btn.danger.secondary:hover:not(:disabled){border-color:var(--bad);color:var(--bad);box-shadow:0 0 0 1px rgba(181,52,47,.25);}
   .btn.small{padding:6px 12px;font-size:11px;}
   .btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none;filter:none;}
 
-  .mode-banner{border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:11px;margin-bottom:14px;color:var(--text-dim);}
+  .mode-banner{border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:11px;margin-bottom:14px;color:var(--text-dim);font-family:var(--mono);}
   .mode-banner.live{border-color:var(--forward);color:var(--forward);}
   .mode-banner.demo{border-color:var(--learning);color:var(--learning);}
 
   /* progress bar — real-time phase/cycle status */
   .progress-panel{border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:14px 16px;margin-bottom:26px;}
-  .progress-label{display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-bottom:8px;}
+  .progress-label{display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-bottom:8px;font-family:var(--mono);}
   .progress-label #progressPct{color:var(--forward);font-weight:700;}
   .progress-track{height:8px;border-radius:5px;background:var(--panel-alt);border:1px solid var(--border);overflow:hidden;}
-  .progress-fill{height:100%;width:0%;border-radius:5px;background:linear-gradient(90deg, var(--forward), #7be6da);transition:width .35s ease, background .35s ease;}
-  .progress-fill.learning{background:linear-gradient(90deg, var(--learning), #ffd08a);}
-  .progress-fill.done{background:linear-gradient(90deg, var(--good), #9df5bf);}
-  .progress-fill.error{background:linear-gradient(90deg, var(--bad), #ff9b8c);}
+  .progress-fill{height:100%;width:0%;border-radius:5px;background:linear-gradient(90deg, var(--forward), var(--forward-bright));transition:width .35s ease, background .35s ease;}
+  .progress-fill.learning{background:linear-gradient(90deg, var(--learning), #D99A3D);}
+  .progress-fill.done{background:linear-gradient(90deg, var(--good), #4FCB92);}
+  .progress-fill.error{background:linear-gradient(90deg, var(--bad), #E8776E);}
+
+  /* motion stage — real running-state visual, adapted from the Canva proposal.
+     .running is only ever added while an actual run is in progress. */
+  .motion-stage{position:relative;overflow:hidden;min-height:180px;border-radius:14px;background:var(--text);isolation:isolate;margin-bottom:26px;}
+  .motion-stage::before{
+    content:"";position:absolute;inset:0;
+    background:
+      radial-gradient(circle at 50% 47%, rgba(20,199,217,.24), transparent 11rem),
+      linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
+    background-size:auto, 26px 26px, 26px 26px;
+  }
+  .motion-stage::after{
+    content:"";position:absolute;left:-10%;right:-10%;height:2px;top:0;opacity:.75;
+    background:linear-gradient(90deg, transparent, var(--forward-bright), transparent);box-shadow:0 0 14px var(--forward-bright);
+  }
+  .motion-stage.running::after{animation:ms-scan 1.7s linear infinite;}
+  @keyframes ms-scan{from{transform:translateY(0);}to{transform:translateY(185px);}}
+  .ms-orbit{position:absolute;width:110px;height:110px;border-radius:50%;border:1px dashed rgba(112,215,225,.4);left:50%;top:50%;transform:translate(-50%,-50%);}
+  .ms-orbit.two{width:155px;height:155px;border-color:rgba(117,88,232,.35);}
+  .motion-stage.running .ms-orbit{animation:ms-orbit 5s linear infinite;}
+  .motion-stage.running .ms-orbit.two{animation-direction:reverse;animation-duration:7s;}
+  @keyframes ms-orbit{to{transform:translate(-50%,-50%) rotate(360deg);}}
+  .ms-core{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:54px;height:54px;display:grid;place-items:center;
+    border-radius:16px;border:1px solid rgba(125,232,242,.6);
+    background:linear-gradient(145deg, rgba(20,199,217,.3), rgba(117,88,232,.32));box-shadow:0 0 26px rgba(20,199,217,.2);color:#c9f4f2;
+  }
+  .motion-stage.running .ms-core{animation:ms-breathe 1.6s ease-in-out infinite;}
+  @keyframes ms-breathe{50%{transform:translate(-50%,-50%) scale(1.08);box-shadow:0 0 44px rgba(20,199,217,.4);}}
+  .ms-label{position:absolute;bottom:14px;left:14px;right:14px;z-index:1;}
+  .ms-label p{margin:0;font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:#a9dee0;}
+  .ms-label .ms-track{margin-top:8px;height:3px;overflow:hidden;border-radius:99px;background:rgba(255,255,255,.15);}
+  .ms-label .ms-fill{height:100%;width:0%;border-radius:99px;background:var(--forward-bright);transition:width .4s ease;}
 
   /* terminal chrome — decorative "window" header for output-style panels */
   .term-head{display:flex;align-items:center;gap:6px;margin-bottom:10px;}
@@ -125,7 +208,7 @@
 
   /* toast notifications */
   #toastStack{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:8px;z-index:9999;}
-  .toast{
+  .toast{font-family:var(--mono);
     background:var(--panel);border:1px solid var(--forward);color:var(--text);border-radius:8px;
     padding:10px 14px;font-size:11.5px;box-shadow:0 8px 24px -6px rgba(0,0,0,.5);
     display:flex;align-items:center;gap:8px;opacity:0;transform:translateY(8px);transition:opacity .25s ease, transform .25s ease;max-width:340px;
@@ -134,17 +217,17 @@
   .toast.toast-bad{border-color:var(--bad);}
   .toast.toast-warn{border-color:var(--learning);}
 
-  .outcome{margin-top:16px;padding:12px;border-radius:8px;border:1px solid var(--border);font-size:12px;color:var(--text-dim);}
-  .outcome.pass{border-color:var(--good);color:var(--good);background:rgba(95,221,142,.07);}
-  .outcome.fail{border-color:var(--bad);color:var(--bad);background:rgba(241,113,95,.07);}
+  .outcome{margin-top:16px;padding:12px;border-radius:8px;border:1px solid var(--border);font-size:12px;color:var(--text-dim);font-family:var(--mono);}
+  .outcome.pass{border-color:var(--good);color:var(--good);background:rgba(35,112,67,.07);}
+  .outcome.fail{border-color:var(--bad);color:var(--bad);background:rgba(181,52,47,.07);}
 
-  .console{background:var(--panel-alt);border:1px solid var(--border);border-radius:8px;padding:12px;height:430px;overflow-y:auto;font-size:11.5px;}
+  .console{background:var(--panel-alt);border:1px solid var(--border);border-radius:8px;padding:12px;height:430px;overflow-y:auto;font-size:11.5px;font-family:var(--mono);}
   .log-line{color:var(--text-dim);padding:2px 0;}
   .log-line.tone-good{color:var(--good);}
   .log-line.tone-bad{color:var(--bad);}
   .log-line.tone-warn{color:var(--learning);}
   .log-line.tone-meta{color:var(--text-dim);font-style:italic;}
-  .log-entry{margin:8px 0;padding:8px 10px;border-left:2px solid var(--border);background:rgba(255,255,255,.02);border-radius:0 6px 6px 0;}
+  .log-entry{margin:8px 0;padding:8px 10px;border-left:2px solid var(--border);background:rgba(7,21,37,.035);border-radius:0 6px 6px 0;}
   .log-entry.arc-forward{border-left-color:var(--forward);}
   .log-entry.arc-learning{border-left-color:var(--learning);}
   .log-title{font-weight:700;font-size:11.5px;margin-bottom:5px;color:var(--text);}
@@ -152,15 +235,15 @@
   .kv .k{flex:0 0 132px;color:var(--text-dim);opacity:.85;}
   .kv .v{color:var(--text);word-break:break-word;}
 
-  .mem-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;}
+  .mem-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;font-family:var(--mono);}
   .mem-card{border:1px solid var(--border);border-radius:8px;padding:10px;background:var(--panel-alt);}
   .mem-card .count{font-size:22px;font-weight:700;color:var(--forward);}
   .mem-card .name{font-size:11px;color:var(--text);margin-top:2px;}
   .mem-card .desc{font-size:9.5px;color:var(--text-dim);margin-top:6px;line-height:1.4;min-height:34px;}
   .mem-card .preview{font-size:10.5px;margin-top:6px;color:var(--text-dim);border-top:1px solid var(--border);padding-top:6px;}
 
-  .skill-card{border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;transition:border-color .3s, background .3s;}
-  .skill-card.active{border-color:var(--forward);background:rgba(73,211,196,.07);}
+  .skill-card{border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;transition:border-color .3s, background .3s;font-family:var(--mono);}
+  .skill-card.active{border-color:var(--forward);background:rgba(13,91,207,.07);}
   .skill-card .name{font-weight:700;font-size:12px;}
   .skill-card .desc{font-size:10.8px;color:var(--text-dim);margin-top:4px;}
   .orch-badge{border:1px dashed var(--gate);border-radius:8px;padding:10px;font-size:10.8px;color:var(--gate);margin-top:4px;}
@@ -169,7 +252,7 @@
   .file-drop{border:1px dashed var(--border);border-radius:8px;padding:14px;text-align:center;font-size:11px;color:var(--text-dim);cursor:pointer;transition:border-color .2s;}
   .file-drop:hover, .file-drop.dragover{border-color:var(--forward);color:var(--forward);}
   .file-list{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
-  .file-chip{border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11px;display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--panel-alt);}
+  .file-chip{border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11px;display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--panel-alt);font-family:var(--mono);}
   .file-chip .fname{color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .file-chip .fmeta{color:var(--text-dim);font-size:10px;white-space:nowrap;}
   .file-chip.status-ok .fmeta{color:var(--good);}
@@ -184,7 +267,7 @@
   details{border:1px solid var(--border);border-radius:10px;padding:14px 16px;background:var(--panel);}
   summary{cursor:pointer;font-size:12px;color:var(--text);}
   summary .prompt{color:var(--forward);}
-  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:11px;}
+  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:11px;font-family:var(--mono);}
   th,td{border:1px solid var(--border);padding:6px 8px;text-align:left;vertical-align:top;}
   th{color:var(--text-dim);font-weight:600;}
   .ref-note{font-size:11px;color:var(--text-dim);margin-top:12px;line-height:1.6;}
@@ -205,7 +288,7 @@
     <div class="badges">
       <span class="badge status"><span class="dot" id="status-dot"></span><span id="status-text">idle</span></span>
       <span class="badge version" id="version-badge">v1.0</span>
-      <a class="badge" href="https://www.canva.com/d/HEWYY_FfjHjJlHU" target="_blank" rel="noopener" style="text-decoration:none;">🎨 brand mark — designed in Canva ↗</a>
+      <a class="badge" href="https://www.canva.com/d/aD_ssDNb07gg3fv" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;gap:5px;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><circle cx="6" cy="6.5" r=".8" fill="currentColor" stroke="none"/><circle cx="10" cy="6" r=".8" fill="currentColor" stroke="none"/><circle cx="9" cy="10" r=".8" fill="currentColor" stroke="none"/></svg>brand mark — designed in Canva ↗</a>
     </div>
   </header>
 
@@ -220,16 +303,16 @@
   <section>
     <div class="panel">
       <div class="section-title"><span class="prompt">$</span> live_mode — Anthropic API key</div>
-      <label for="apiKey">API key (used only for direct browser calls to api.anthropic.com; never sent anywhere else)</label>
+      <label for="apiKey" class="field-label"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="11" r="2.5"/><path d="M7 9l6-6M11 5l1.5 1.5M9 3l1.5 1.5"/></svg>API key (used only for direct browser calls to api.anthropic.com; never sent anywhere else)</label>
       <input type="password" id="apiKey" placeholder="sk-ant-...">
-      <label for="workspaceId">workspace ID <label class="inline-note">(only required if your key is "identity-linked" — the API will tell you via a 400 error if you need this)</label></label>
+      <label for="workspaceId" class="field-label"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2l6 3-6 3-6-3 6-3z"/><path d="M2 8l6 3 6-3M2 11l6 3 6-3"/></svg>workspace ID <label class="inline-note">(only required if your key is "identity-linked" — the API will tell you via a 400 error if you need this)</label></label>
       <input type="text" id="workspaceId" placeholder="wrkspc-...">
       <div class="row-inline">
-        <label class="check"><input type="checkbox" id="rememberKey"> remember in this browser (localStorage, plain text)</label>
-        <button class="btn secondary small" onclick="saveApiKeyIfWanted()"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 3h8l2 2v8H3V3z"/><path d="M5 3v4h6V3M5 13v-4h6v4"/></svg>save key</button>
-        <button class="btn secondary small" onclick="clearApiKey()"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 3l10 10M13 3L3 13"/></svg>clear key</button>
+        <label class="check"><input type="checkbox" class="toggle" id="rememberKey"> remember in this browser (localStorage, plain text)</label>
+        <button class="btn secondary small" onclick="saveApiKeyIfWanted()"><i data-lucide="save" style="width:13px;height:13px;" aria-hidden="true"></i>save key</button>
+        <button class="btn secondary small" onclick="clearApiKey()"><i data-lucide="x" style="width:13px;height:13px;" aria-hidden="true"></i>clear key</button>
       </div>
-      <label for="modelInput">model</label>
+      <label for="modelInput" class="field-label"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="8" height="8" rx="1"/><path d="M6 1v3M10 1v3M6 12v3M10 12v3M1 6h3M1 10h3M12 6h3M12 10h3"/></svg>model</label>
       <input type="text" id="modelInput" list="modelList" value="claude-sonnet-5">
       <datalist id="modelList">
         <option value="claude-sonnet-5"><option value="claude-opus-5">
@@ -242,16 +325,30 @@
   <section>
     <div class="panel">
       <div class="section-title"><span class="prompt">$</span> data_feed — attach reference files (optional)</div>
-      <div class="ref-note">PDF is sent to Claude directly and read natively (real multimodal understanding, no local extraction). Word/PowerPoint/Excel are unzipped and their text extracted right here in your browser, then summarized by one real Claude call — nothing is faked or guessed from the filename. Generic .zip files are listed, and any plain-text members inside are extracted too. Nothing is uploaded anywhere except to Anthropic's API, and only when you click "process attachments."</div>
-      <label for="fileInput">files — .pdf .docx .pptx .xlsx .zip .txt .csv .md .json (25MB combined limit)</label>
-      <input type="file" id="fileInput" multiple accept=".pdf,.docx,.pptx,.xlsx,.zip,.txt,.csv,.md,.json" style="padding:6px;">
+      <div class="ref-note">PDF and images (JPEG/PNG/GIF/WebP) are sent to Claude directly and read natively — real multimodal vision/document understanding, no local extraction. Those are the only image codecs Claude's API actually supports; other image types (BMP, TIFF, HEIC, AVIF, etc.) are rejected with a clear message rather than silently failing. <code>.jfif</code> is also accepted — it's not a separate codec, just a JPEG file with a specific container marker, registered under the same <code>image/jpeg</code> media type. SVG is read as real text/markup, since it's XML, not a raster image. Word/PowerPoint/Excel are unzipped and their text extracted right here in your browser, then summarized by one real Claude call — nothing is faked or guessed from the filename. Generic .zip files are listed, and any plain-text members inside are extracted too. Nothing is uploaded anywhere except to Anthropic's API, and only when you click "process attachments."</div>
+      <label for="fileInput">files — .pdf .jpg .jpeg .jfif .png .gif .webp .docx .pptx .xlsx .zip .txt .csv .md .json .svg (25MB combined limit)</label>
+      <input type="file" id="fileInput" multiple accept=".pdf,.jpg,.jpeg,.jfif,.png,.gif,.webp,.docx,.pptx,.xlsx,.zip,.txt,.csv,.md,.json,.svg" style="padding:6px;">
       <div class="file-list" id="fileList"></div>
       <div class="actions">
-        <button class="btn secondary small" id="processAttachBtn" onclick="processAttachments()"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 8h3l2-5 3 10 2-5h2"/></svg>process attachments</button>
-        <button class="btn secondary small" onclick="clearAttachments()"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4h10M6 4V2.5h4V4M4 4l.6 9a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9L12 4"/></svg>clear attachments</button>
+        <button class="btn secondary small" id="processAttachBtn" onclick="processAttachments()"><i data-lucide="wand-2" style="width:13px;height:13px;" aria-hidden="true"></i>process attachments</button>
+        <button class="btn secondary small" onclick="clearAttachments()"><i data-lucide="trash-2" style="width:13px;height:13px;" aria-hidden="true"></i>clear attachments</button>
       </div>
       <div class="ref-note" id="attachStatus">no attachments processed yet</div>
       <div class="attach-preview" id="attachPreview" style="display:none;"></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="panel">
+      <div class="section-title"><span class="prompt">$</span> system_check — confirm modules actually work before you rely on them</div>
+      <div class="ref-note">Every check below runs a real test, not a canned "all green" list — browser capability checks are free and instant; the sandboxed-execution check actually runs a throwaway test page through the exact same pipeline used for real products; the API checks make real network calls (GitHub's is free, Anthropic's costs a few tokens and is opt-in).</div>
+      <div class="row-inline" style="margin:10px 0;">
+        <label class="check"><input type="checkbox" id="verifyAnthropicOnCheck"> also verify the Anthropic key with a real (tiny, paid) API call</label>
+      </div>
+      <div class="actions" style="margin-top:0;">
+        <button class="btn secondary small" id="systemCheckBtn" onclick="runSystemCheck()"><i data-lucide="check-circle-2" style="width:13px;height:13px;" aria-hidden="true"></i>run system check</button>
+      </div>
+      <div id="systemCheckResults" style="margin-top:12px;display:flex;flex-direction:column;gap:6px;"></div>
     </div>
   </section>
 
@@ -297,6 +394,15 @@
   </section>
 
   <section>
+    <div class="motion-stage" id="motionStage">
+      <div class="ms-orbit"></div>
+      <div class="ms-orbit two"></div>
+      <div class="ms-core"><i data-lucide="boxes" style="width:24px;height:24px;" aria-hidden="true"></i></div>
+      <div class="ms-label">
+        <p id="motionLabel">system idle · awaiting brief</p>
+        <div class="ms-track"><div class="ms-fill" id="motionFill"></div></div>
+      </div>
+    </div>
     <div class="progress-panel">
       <div class="progress-label"><span id="progressText">idle — no run yet</span><span id="progressPct">0%</span></div>
       <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
@@ -306,31 +412,48 @@
   <section class="grid2">
     <div class="panel">
       <div class="section-title"><span class="prompt">$</span> run_config — build or enhance a product</div>
+      <div class="row-inline" style="margin:0 0 14px;">
+        <button class="btn secondary small" onclick="saveSettings()"><i data-lucide="save" style="width:13px;height:13px;" aria-hidden="true"></i>save settings</button>
+        <button class="btn secondary small" onclick="clearSavedSettings()"><i data-lucide="trash-2" style="width:13px;height:13px;" aria-hidden="true"></i>clear saved settings</button>
+        <span class="ref-note" id="settingsStatus" style="margin:0;">not saved — covers every field below plus repo owner/name/auto-deploy in the deploy panel (not the API key or GitHub token, those save separately)</span>
+      </div>
 
-      <label for="goal">goal — what to build or change</label>
+      <label for="goal" class="field-label"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="3"/><circle cx="8" cy="8" r=".6" fill="currentColor"/></svg>goal — what to build or change</label>
       <textarea id="goal" placeholder="e.g. Build a small expense splitter for a group trip">Build a single-page tip calculator: enter a bill amount and party size, choose a tip percent, show each person's share.</textarea>
 
-      <label for="constraints">constraints (comma-separated, optional)</label>
+      <label for="constraints" class="field-label"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h12M2 12h12"/><circle cx="6" cy="4" r="1.3" fill="currentColor" stroke="none"/><circle cx="11" cy="8" r="1.3" fill="currentColor" stroke="none"/><circle cx="5" cy="12" r="1.3" fill="currentColor" stroke="none"/></svg>constraints (comma-separated, optional)</label>
       <input type="text" id="constraints" placeholder="e.g. no external libraries, mobile-friendly">
 
-      <label for="existingSource">existing product to enhance (optional — paste a single-file HTML product; leave blank to build new)</label>
+      <label for="existingSource" class="field-label"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 1.5h6l3 3v10h-9v-13z"/><path d="M6.5 8l-1.5 1.5 1.5 1.5M9.5 8l1.5 1.5-1.5 1.5"/></svg>existing product to enhance (optional — paste a single-file HTML product; leave blank to build new)</label>
       <textarea id="existingSource" placeholder="<!-- paste an existing single-file HTML product here to enhance it -->" style="min-height:80px"></textarea>
+      <input type="file" id="existingSourceFile" accept=".html,.htm" style="display:none;">
+      <div class="row-inline" style="margin-top:8px;">
+        <button type="button" class="btn secondary small" onclick="document.getElementById('existingSourceFile').click()"><i data-lucide="upload" style="width:12px;height:12px;" aria-hidden="true"></i>Upload</button>
+        <button type="button" class="btn secondary small" onclick="processExistingSourceUpload()"><i data-lucide="clipboard-check" style="width:13px;height:13px;" aria-hidden="true"></i>process attachment</button>
+        <span class="ref-note" id="existingSourceStatus" style="margin:0;">no file uploaded — paste directly above, or upload an .html file</span>
+      </div>
 
-      <label for="maxCycles">max cycles</label>
-      <input type="number" id="maxCycles" min="1" max="5" value="2">
+      <label for="maxCycles" class="field-label"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8a5 5 0 0 1 8.5-3.5L13 6M13 2v4h-4"/><path d="M13 8a5 5 0 0 1-8.5 3.5L3 10M3 14v-4h4"/></svg>max cycles</label>
+      <input type="number" id="maxCycles" min="1" max="20" value="2">
+      <div class="ref-note warn">Each cycle can make up to ~8 real API calls if it fails and goes through the full learning arc, so higher counts cost more and take longer — there's no hidden extra cap beyond this field's max, and if your input gets adjusted you'll see why below.</div>
 
-      <label for="threshold">quality threshold — <span id="threshold-val">80</span>% (real runtime errors force a fail regardless of this score)</label>
-      <input type="range" id="threshold" min="30" max="99" value="80">
+      <label for="maxPhasePerCycle" class="field-label"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1" opacity=".35"/></svg>max phase per cycle</label>
+      <input type="number" id="maxPhasePerCycle" min="5" max="10" value="10">
+      <div class="ref-note warn">Phases 1–5 (Understand through Verify) always run in full — there's no way to get a real outcome without completing Verify, so this can't go below 5. On a FAILED cycle, this caps how far into the learning arc (6 Reflect, 7 Learn, 8 Experiment, 9 Evolve, 10 Remember) it proceeds before moving to the next cycle. Lower = cheaper, faster retries with less self-correction and nothing persisted to memory below that phase; 10 (default) = full learning arc every failure.</div>
+
+      <label for="threshold" class="field-label"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12a6 6 0 0 1 12 0"/><path d="M8 12l3-4"/><circle cx="8" cy="12" r=".8" fill="currentColor" stroke="none"/></svg>quality threshold — <span id="threshold-val">80</span>% (real runtime errors force a fail regardless of this score)</label>
+      <div class="ref-note warn" style="margin-top:2px;">setting this to 100% means demo mode will fail every cycle — its scripted formula tops out at 99, by design. Live mode is unaffected; a real judgment call can genuinely return 100.</div>
+      <input type="range" id="threshold" min="30" max="100" value="80">
 
       <div class="row-inline">
-        <label class="check"><input type="checkbox" id="forceFail"> force first cycle to fail <label class="inline-note">(demo mode only)</label></label>
-        <label class="check"><input type="checkbox" id="fastMode"> fast mode (demo animation only)</label>
+        <label class="check"><input type="checkbox" class="toggle" id="forceFail"> force first cycle to fail <label class="inline-note">(demo mode only)</label></label>
+        <label class="check"><input type="checkbox" class="toggle" id="fastMode"> fast mode (demo animation only)</label>
       </div>
 
       <div class="actions">
-        <button class="btn" id="runLiveBtn" onclick="runAgent('live')"><svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor"><path d="M4 2l10 6-10 6V2z"/></svg>run live (real Claude)</button>
-        <button class="btn secondary" id="runDemoBtn" onclick="runAgent('demo')"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6 2h4M6.5 2v4l-3.5 6a1.5 1.5 0 0 0 1.3 2.2h7.4a1.5 1.5 0 0 0 1.3-2.2L9.5 6V2"/></svg>run offline demo (scripted)</button>
-        <button class="btn secondary danger" id="resetBtn" onclick="resetAll()"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4h10M6 4V2.5h4V4M4 4l.6 9a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9L12 4"/></svg>reset memory</button>
+        <button class="btn" id="runLiveBtn" onclick="runAgent('live')"><i data-lucide="play" style="width:13px;height:13px;" aria-hidden="true"></i>run live (real Claude)</button>
+        <button class="btn secondary" id="runDemoBtn" onclick="runAgent('demo')"><i data-lucide="flask-conical" style="width:13px;height:13px;" aria-hidden="true"></i>run offline demo (scripted)</button>
+        <button class="btn secondary danger" id="resetBtn" onclick="resetAll()"><i data-lucide="rotate-ccw" style="width:13px;height:13px;" aria-hidden="true"></i>reset memory</button>
       </div>
 
       <div class="mode-banner" id="modeBanner">no run yet</div>
@@ -348,35 +471,35 @@
     <div class="panel">
       <div class="section-title"><span class="prompt">$</span> live_preview — the actual product, actually running</div>
       <div class="term-head"><span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span><span class="term-title">preview.frame — sandboxed, real errors captured</span></div>
-      <iframe id="previewFrame" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe>
+      <iframe id="previewFrame" sandbox="allow-scripts allow-forms" referrerpolicy="no-referrer"></iframe>
       <div class="ref-note" id="previewStatus">no product generated yet</div>
       <div class="actions">
-        <button class="btn secondary small" onclick="downloadProduct()"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 2v8m0 0l-3-3m3 3l3-3M3 13h10"/></svg>download product file</button>
-        <button class="btn secondary small" onclick="openPreviewNewTab()"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6 3H3v10h10v-3M9 2h5v5M14 2l-6 6"/></svg>open in new tab</button>
+        <button class="btn secondary small" onclick="downloadProduct()"><i data-lucide="download" style="width:13px;height:13px;" aria-hidden="true"></i>download product file</button>
+        <button class="btn secondary small" onclick="openPreviewNewTab()"><i data-lucide="external-link" style="width:13px;height:13px;" aria-hidden="true"></i>open in new tab</button>
       </div>
     </div>
 
     <div class="panel">
       <div class="section-title"><span class="prompt">$</span> deploy — GitHub Pages (optional, real, off by default)</div>
       <div class="ref-note">A token here lets this page create/update a public GitHub repo under your account via the real GitHub REST API and turn on Pages for it — nothing here is simulated. Requires a classic PAT with the "repo" scope, or a fine-grained token with Contents + Pages write access on the target repo. Assumes the repo's default branch supports Pages.</div>
-      <label for="ghToken">GitHub personal access token</label>
+      <label for="ghToken" class="field-label"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3.5" y="7" width="9" height="6.5" rx="1"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>GitHub personal access token</label>
       <input type="password" id="ghToken" placeholder="ghp_...">
       <div class="row-inline">
-        <label class="check"><input type="checkbox" id="rememberGhToken"> remember in this browser (localStorage, plain text)</label>
-        <button class="btn secondary small" onclick="verifyGitHubToken()"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 1c2 1.5 3 4 3 7l-1.5 1.5h-3L5 8c0-3 1-5.5 3-7z"/><circle cx="8" cy="6" r="1"/></svg>connect</button>
-        <button class="btn secondary small" onclick="saveGhTokenIfWanted()"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 3h8l2 2v8H3V3z"/><path d="M5 3v4h6V3M5 13v-4h6v4"/></svg>save token</button>
-        <button class="btn secondary small" onclick="clearGhToken()"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 3l10 10M13 3L3 13"/></svg>clear token</button>
+        <label class="check"><input type="checkbox" class="toggle" id="rememberGhToken"> remember in this browser (localStorage, plain text)</label>
+        <button class="btn secondary small" onclick="verifyGitHubToken()"><i data-lucide="shield-check" style="width:13px;height:13px;" aria-hidden="true"></i>connect</button>
+        <button class="btn secondary small" onclick="saveGhTokenIfWanted()"><i data-lucide="save" style="width:13px;height:13px;" aria-hidden="true"></i>save token</button>
+        <button class="btn secondary small" onclick="clearGhToken()"><i data-lucide="trash-2" style="width:13px;height:13px;" aria-hidden="true"></i>clear token</button>
       </div>
       <div class="ref-note" id="ghConnectionStatus">not connected — paste a token above and click "connect"</div>
-      <label for="ghOwner">repo owner (your GitHub username)</label>
+      <label for="ghOwner" class="field-label"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5.5" r="2.5"/><path d="M3 14c0-2.8 2.2-5 5-5s5 2.2 5 5"/></svg>repo owner (your GitHub username)</label>
       <input type="text" id="ghOwner" placeholder="e.g. octocat">
-      <label for="ghRepo">repo name</label>
+      <label for="ghRepo" class="field-label"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 5l6-3 6 3-6 3-6-3z"/><path d="M2 5v6l6 3 6-3V5"/><path d="M8 8v6"/></svg>repo name</label>
       <input type="text" id="ghRepo" placeholder="e.g. my-agent-product">
       <div class="row-inline">
-        <label class="check"><input type="checkbox" id="autoDeploy"> auto-deploy on release (live mode only)</label>
+        <label class="check"><input type="checkbox" class="toggle" id="autoDeploy"> auto-deploy on release (live mode only)</label>
       </div>
       <div class="actions">
-        <button class="btn secondary small" onclick="deployToGitHubPages(true)"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 1c2 1.5 3 4 3 7l-1.5 1.5h-3L5 8c0-3 1-5.5 3-7z"/><circle cx="8" cy="6" r="1"/><path d="M5.5 9.5L4 13l2.5-1M10.5 9.5L12 13l-2.5-1"/></svg>deploy now</button>
+        <button class="btn secondary small" onclick="deployToGitHubPages(true)"><i data-lucide="rocket" style="width:13px;height:13px;" aria-hidden="true"></i>deploy now</button>
       </div>
       <div class="ref-note" id="deployStatus">not deployed yet</div>
     </div>
@@ -416,8 +539,24 @@
         <li><b>The RELEASE_COMPLETE outcome banner no longer hides deploy failures</b>: previously, if auto-deploy was on and the build passed but the GitHub push failed, the banner still said a plain success with no indication anything was wrong — the deploy error only lived in a small status line. It's now part of the outcome banner itself, in red, with the real error.</li>
         <li><b>GitHub is now a verified connection, not a blind token field</b>: clicking "connect" (or loading a saved token on page reload) makes a real <code>GET /user</code> call to GitHub's API and shows the actual authenticated username on success, or the actual rejection reason on failure — before you ever try to deploy anything.</li>
         <li><b>The brand mark in the header is a real Canva design</b>, not a placeholder: generated via the actual Canva connector (4 real candidate logos, one materialized into a real Canva design). I could not embed the exported image directly into this file — I tested it, and both this sandbox's network egress and the web-fetch tool reject Canva's export domain, confirmed by an actual <code>403 host_not_allowed</code>, not assumed. Rather than hardcode the signed export URL (which expires in a few hours and would silently break), the header links to the permanent Canva design page instead.</li>
+        <li><b>The logo was regenerated to match the light theme</b>: the original was explicitly prompted for a dark navy background, which no longer matched anything in the app after the light-theme conversion. The new one ("Dynamic Loop Logo in Deep Teal with Indigo Accent") was generated using the actual shipped hex values (<code>#0A7267</code> teal, <code>#5A48D6</code> indigo) rather than the old bright dark-theme teal, so it's consistent with the real palette instead of a leftover mismatch.</li>
+        <li><b>Visual system merged with the Canva-designed reference build</b>: palette, fonts (DM Sans for prose, Space Mono for technical/data elements — the same split the Canva file itself used), icons (real Lucide icons replacing hand-drawn SVGs on every primary button), and a real "motion stage" animation adapted from that file's design. None of the merged file's actual logic was used — it had zero API calls and a fixed-timer fake build sequence, documented in an earlier QA pass. Only its visual language was carried over.</li>
+        <li><b>Colors were re-derived from real contrast math, not copied</b>: Canva's own palette measured as low as 1.7:1 for cyan and lime as text on white — unreadable. Deepened variants were computed and verified (5.4–6.2:1 across the board) before shipping, following the exact same discipline as the earlier dark→light conversion. The bright originals (cyan, lime) are kept for glows/fills/dots only, mirroring a pattern Canva's own file already used in one place (a hardcoded deep green for success text, separate from the bright lime used for fills) — that consistency was verified, not assumed.</li>
+        <li><b>The motion stage reflects real state, not decoration</b>: its "running" animation only activates during an actual live/demo run (the same <code>disabled</code> flag that locks the form), and its status line and progress fill are driven by the exact same real phase-transition data the text progress bar already used — no separate fake timer.</li>
+        <li><b>Two real bugs found and fixed while doing this merge</b>: a duplicate CSS rule (<code>header h1 .prompt</code> defined twice) was silently cancelling the intended purple accent on the header's <code>$</code> symbol — now fixed. And switching the base font from monospace to DM Sans would have silently stripped the monospace styling from every log line, table cell, node label, badge, and memory card (none had their own explicit font-family, they were all just inheriting from body) — explicit <code>font-family:var(--mono)</code> was added back to all 13 of those container rules so the technical areas keep their intended look.</li>
+        <li><b>Image uploads support the 4 real formats Claude's vision API accepts</b> (JPEG/PNG/GIF/WebP, confirmed against current Anthropic docs before implementing — not "all image formats," which was the literal request), sent as native image content blocks in the same real ingestion call PDFs already use. <code>.jfif</code> is also accepted since it's registered under the same <code>image/jpeg</code> media type, not a separate codec. Genuinely unsupported formats (BMP, TIFF, HEIC, AVIF) are rejected with a clear message rather than silently failing.</li>
+        <li><b>Fixed a real "empty response" bug</b>: extended thinking is auto-enabled by default on some current models, and thinking tokens count against <code>max_tokens</code> — a complex Execute call could burn its entire budget on internal reasoning and return zero actual output text (the exact reported failure: <code>stop_reason: max_tokens</code>, one <code>thinking</code> content block, no <code>text</code> block). Every API call now explicitly sends <code>thinking: {type: "disabled"}</code>, with a fallback that retries without the field if a given model rejects it outright. Verified against three scenarios, including a direct reproduction of the reported bug, before shipping.</li>
+        <li><b>Fixed "works in preview, breaks when deployed or opened for real"</b> — the preview iframe's sandbox was <code>allow-scripts</code> only, missing <code>allow-forms</code>. If a generated product used a <code>&lt;form&gt;</code> whose submit handler didn't call <code>event.preventDefault()</code>, the sandbox silently blocked that submission in preview (looked fine), while a real deployment or a locally-opened file has no such restriction — the form would actually submit, causing a full page reload that wipes all state the instant someone used it. Three real fixes, not one: the sandbox now includes <code>allow-forms</code> so preview behavior actually matches deployed reality instead of hiding this bug class; the injected monitor now listens for <code>beforeunload</code> to catch the navigation attempt itself, and also auto-clicks the first 20 buttons on the page as a smoke test, since a bug that only manifests on click was never going to be caught by a load-only check; and the Execute prompt now explicitly instructs against generating this pattern in the first place. Verified with 4 tests run in a real simulated DOM (not just syntax-checked) — including a direct reproduction of an un-prevented form submit, confirmed caught.</li>
+        <li><b>System check</b> — a new panel that runs real tests, not a canned checklist: browser capability detection (DecompressionStream, DOMParser, FileReader), a genuine localStorage write-then-read-back, and a real end-to-end run of the sandboxed-iframe pipeline (the exact mechanism Execute/Verify use) with a real throwaway test page. The API checks are real network calls — GitHub's is free, Anthropic's is opt-in since it spends a few real tokens.</li>
+        <li><b>Existing-product upload</b>: the "existing product to enhance" field previously only accepted pasted text. It now has a real <b>Upload</b> button and a <b>process attachment</b> button that runs the exact same <code>checkBasicSanity()</code> check the real product-generation pipeline uses — a genuine validation, not a scripted "always confirmed" message. Note on the native file-picker label some browsers show (e.g. "Pilih File" in Indonesian-locale browsers, "Choose File" in English): that text comes from the browser/OS itself, not this page, so it can't be renamed directly — the fix was to hide the native input entirely and drive it from a custom "Upload" button whose label is fully under this page's control.</li>
+        <li><b>Max phase per cycle</b> — a new setting (5–10, default 10) that caps how far a FAILED cycle proceeds into the learning arc before moving on. Phases 1–5 always run in full (there's no real outcome without completing Verify), so this can't go below 5. Lower values trade self-correction depth for speed/cost: at 6, only Reflect runs; at 9, everything except Remember runs — meaning nothing from that cycle gets persisted to memory, which is real and disclosed, not silently dropped. Verified with boundary tests at 5/6/7/9/10 against the actual shipped code, confirming exactly the right phases run (and no more) at each level, that memory is only written at 10, and that a real lesson (not a placeholder) is recorded whenever Learn actually ran. This shares the existing "save settings" button rather than getting a duplicate one, since it's a settings field like any other.</li>
+        <li><b>Quality threshold now genuinely reaches 100%</b> — it was capped at 99 in the slider's own <code>max</code> attribute, a plain oversight. Also flagged: demo mode's scripted score formula tops out at 99 by design, so setting the threshold to 100% will make demo mode fail every cycle — that's disclosed inline now rather than left as a silent mystery. Live mode is unaffected, since a real judgment call can genuinely return 100.</li>
         <li><b>Deploy now commits a <code>.nojekyll</code> file alongside the product</b>: GitHub Pages runs everything through Jekyll by default, which can silently mangle or fail to build a plain static HTML/JS file that was never meant to be a Jekyll site. Missing this was the actual cause of an earlier real bug report ("deployed but the page doesn't open").</li>
         <li><b>Deploy status now reflects GitHub's real build status, not just "did a URL get returned"</b>: after committing, it polls the Pages API for the actual <code>status</code> field (built / building / errored) instead of declaring success the moment a URL exists — which was always premature, since that URL exists before anything has actually built. A still-building or errored result now shows as such, in the outcome banner and the deploy panel, instead of claiming "live" prematurely.</li>
+        <li><b>The max-cycles cap was silently overriding user input — fixed</b>: it was hardcoded to 5 in both the input field and the JS clamp, with no indication that anything typed above 5 was being ignored. It's now capped at 20 (a real limit — each cycle can make up to ~8 real API calls if it fails, so an unbounded count risks runaway cost/time), and if your input actually gets adjusted, it now says so out loud, in the log and as a toast, and updates the field to show what will really run — never silent again. The 10-phase structure itself (Understand→Remember) is not a configurable count; it's the fixed architecture of one cycle, unrelated to how many cycles you run.</li>
+        <li><b>"Save settings" now persists every parameter field</b> (goal, constraints, existing product, max cycles, threshold, force-fail, fast mode, model, repo owner/name, auto-deploy) as one unit in <code>localStorage</code>, verified by reading the value back before confirming — same discipline as the API key and GitHub token saves. It auto-restores on page load, including re-syncing the threshold percentage label, not just the slider's raw value. The API key and GitHub token deliberately stay on their own separate save/remember controls, since bundling secrets in with everything else would make them harder to clear independently.</li>
+        <li><b>Icon/field redesign — Canva was genuinely used, with an honest caveat</b>: a real style-reference design was generated and materialized via the Canva connector (<a href="https://www.canva.com/d/XBRN_bGJ00hVBYq" target="_blank" rel="noopener">view it here</a>). But I have no way to fetch or view Canva's rendered output myself — the same sandbox restriction from the logo — so unlike the logo (a standalone thing you can look at), I couldn't use it as literal visual input the way "coordinate on a redesign" implies. The actual redesign below was implemented directly from the brief (simple/techie/professional/modern), not copied from the Canva output, and I have not visually rendered the result myself either — only validated it structurally. What changed: checkboxes are now custom toggle switches (pure CSS, zero JS/behavior change — <code>.checked</code> still works identically); the threshold slider has a custom glowing thumb matching the accent color instead of the browser default; every inline icon's stroke-width was unified (was a mix of 1.3/1.6, now a consistent 1.5); and small monochrome icons were added to the 11 most-used field labels for scannability.</li>
+        <li><b>Switched from dark to light theme, and the old colors were not just recolored — they were re-derived with real contrast math.</b> The person then uploaded the actual Canva design image, which I could view directly (their upload, not a fetch on my end) — a dark navy timeline infographic with a teal-and-purple accent pairing and bold pill/badge treatment. Since the instruction was explicitly to avoid dark theme, I didn't copy its background — I extracted that teal+purple accent language and rebuilt it on white. The old accent colors (teal #49D3C4, amber #F2A65A, green #5FDD8E, red #F1715F) were tuned for a near-black background and would have had contrast ratios of roughly 1.6–2.9:1 as text on white — unreadable. Every semantic color was recalculated against real WCAG relative-luminance math until it cleared 4.5:1 on both the page background and panel surfaces; final measured ratios are 5.46–6.34:1 across teal/amber/green/red/purple, verified against the actual shipped <code>:root</code> values, not just the intended ones. The primary button's text also changed from dark-on-teal to white-on-teal after the same check showed dark text dropping to 2.91:1 at the gradient's deep end. The new purple (<code>--gate</code>, a direct nod to the reference image's purple "Overview" label) now colors the header's prompt symbol, and the version badge became a solid bright-teal pill echoing the reference's badge treatment.</li>
       </ul>
       <div class="ref-note"><b>What's still limited, honestly:</b></div>
       <ul class="tight">
@@ -487,6 +626,7 @@ const LS_VER = "ala_version_v1";
 const LS_KEY = "ala_apikey_v1";
 const LS_WS  = "ala_workspaceid_v1";
 const LS_GH  = "ala_ghtoken_v1";
+const LS_SETTINGS = "ala_settings_v1";
 
 /* ============================================================
    STATE
@@ -615,6 +755,78 @@ function clearGhToken(){
 function loadGhToken(){ try{ const k = localStorage.getItem(LS_GH); if (k){ $("ghToken").value = k; $("rememberGhToken").checked = true; } }catch(e){} }
 
 /* ============================================================
+   PARAMETER SETTINGS — every non-sensitive field, saved as one
+   unit (not the API key or GitHub token, which have their own
+   opt-in save/remember since they're secrets)
+   ============================================================ */
+function collectSettings(){
+  return {
+    goal: $("goal").value,
+    constraints: $("constraints").value,
+    existingSource: $("existingSource").value,
+    maxCycles: $("maxCycles").value,
+    maxPhasePerCycle: $("maxPhasePerCycle").value,
+    threshold: $("threshold").value,
+    forceFail: $("forceFail").checked,
+    fastMode: $("fastMode").checked,
+    modelInput: $("modelInput").value,
+    ghOwner: $("ghOwner").value,
+    ghRepo: $("ghRepo").value,
+    autoDeploy: $("autoDeploy").checked,
+  };
+}
+function applySettings(s){
+  if (!s || typeof s !== "object") return;
+  if (typeof s.goal === "string") $("goal").value = s.goal;
+  if (typeof s.constraints === "string") $("constraints").value = s.constraints;
+  if (typeof s.existingSource === "string") $("existingSource").value = s.existingSource;
+  if (s.maxCycles != null) $("maxCycles").value = s.maxCycles;
+  if (s.maxPhasePerCycle != null) $("maxPhasePerCycle").value = s.maxPhasePerCycle;
+  if (s.threshold != null){ $("threshold").value = s.threshold; $("threshold-val").textContent = s.threshold; }
+  if (typeof s.forceFail === "boolean") $("forceFail").checked = s.forceFail;
+  if (typeof s.fastMode === "boolean") $("fastMode").checked = s.fastMode;
+  if (typeof s.modelInput === "string" && s.modelInput) $("modelInput").value = s.modelInput;
+  if (typeof s.ghOwner === "string") $("ghOwner").value = s.ghOwner;
+  if (typeof s.ghRepo === "string") $("ghRepo").value = s.ghRepo;
+  if (typeof s.autoDeploy === "boolean") $("autoDeploy").checked = s.autoDeploy;
+}
+function saveSettings(){
+  const statusEl = $("settingsStatus");
+  try{
+    const payload = JSON.stringify(collectSettings());
+    localStorage.setItem(LS_SETTINGS, payload);
+    // verify by reading back, same discipline as the API key / GitHub token saves
+    const ok = localStorage.getItem(LS_SETTINGS) === payload;
+    if (ok){
+      statusEl.textContent = "saved locally in this browser — restored automatically next time you open this page";
+      log("Settings saved to this browser's local storage.", "meta");
+      showToast("Settings saved locally in this browser — not uploaded anywhere.", "good");
+    } else {
+      statusEl.textContent = "save did not verify — your browser may be blocking local storage on this page";
+      showToast("Save did not verify — check if local storage is blocked (e.g. private/incognito mode).", "bad");
+    }
+  }catch(e){
+    statusEl.textContent = "could not save — " + e.message;
+    showToast("Could not save settings — " + e.message, "bad");
+  }
+}
+function clearSavedSettings(){
+  try{ localStorage.removeItem(LS_SETTINGS); }catch(e){}
+  $("settingsStatus").textContent = "not saved — covers every field above plus repo owner/name/auto-deploy in the deploy panel (not the API key or GitHub token, those save separately)";
+  showToast("Saved settings cleared — current fields on screen are untouched.", "good");
+}
+function loadSettings(){
+  try{
+    const raw = localStorage.getItem(LS_SETTINGS);
+    if (raw){
+      applySettings(JSON.parse(raw));
+      $("settingsStatus").textContent = "loaded from a previous session in this browser";
+      log("Restored saved settings from a previous session.", "meta");
+    }
+  }catch(e){ /* corrupt or blocked storage — just proceed with the defaults already in the HTML */ }
+}
+
+/* ============================================================
    TOAST NOTIFICATIONS
    ============================================================ */
 function showToast(message, tone){
@@ -654,11 +866,27 @@ async function anthropicRawCall(system, userContent, maxTokens){
   const workspaceId = getWorkspaceId();
   if (workspaceId) headers["anthropic-workspace-id"] = workspaceId;
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: headers,
-    body: JSON.stringify({model: model, max_tokens: maxTokens || 700, system: system, messages: [{role: "user", content: userContent}]}),
-  });
+  // Extended thinking is auto-enabled by default on some current models, and
+  // thinking tokens count against max_tokens — a complex task can burn the
+  // entire budget reasoning and return zero actual output text (confirmed
+  // real failure: stop_reason "max_tokens", one "thinking" block, no text).
+  // None of these phase calls need visible reasoning, so it's explicitly
+  // disabled. If a given model rejects the field entirely, retry once
+  // without it rather than assume every model accepts the same shape.
+  async function doCall(includeThinking){
+    const payload = {model: model, max_tokens: maxTokens || 700, system: system, messages: [{role: "user", content: userContent}]};
+    if (includeThinking) payload.thinking = {type: "disabled"};
+    return fetch("https://api.anthropic.com/v1/messages", {method: "POST", headers: headers, body: JSON.stringify(payload)});
+  }
+
+  let res = await doCall(true);
+  if (!res.ok && res.status === 400){
+    let detail = "";
+    try{ const body = await res.clone().json(); detail = (body && body.error && body.error.message) || ""; }catch(e){}
+    if (/thinking/i.test(detail)){
+      res = await doCall(false); // this model didn't accept the thinking field at all — retry without it
+    }
+  }
 
   if (!res.ok){
     let detail = res.statusText;
@@ -774,7 +1002,17 @@ function injectMonitor(html){
   const monitor = '<script>(function(){var __e=[];' +
     'window.addEventListener("error",function(ev){__e.push({message:String(ev.message||(ev.error&&ev.error.message)||"error")});});' +
     'window.addEventListener("unhandledrejection",function(ev){__e.push({message:"unhandled rejection: "+String((ev.reason&&ev.reason.message)||ev.reason)});});' +
-    'window.addEventListener("load",function(){setTimeout(function(){try{parent.postMessage({__alaMonitor:true,errors:__e},"*");}catch(e){}},500);});' +
+    // A form that submits without event.preventDefault() works fine when actually deployed
+    // (it just reloads the page, wiping all state) but is silently BLOCKED by an
+    // "allow-scripts"-only sandboxed preview, so this class of bug used to be invisible
+    // here and only surfaced after a real deploy. beforeunload catches the navigation
+    // attempt itself, the moment it happens, in this now-more-representative sandbox.
+    'window.addEventListener("beforeunload",function(){__e.push({message:"page attempted to navigate/reload — likely a <form> submitted without event.preventDefault(), which would wipe all state when actually deployed"});try{parent.postMessage({__alaMonitor:true,errors:__e},"*");}catch(e){}});' +
+    // Real errors don't only happen on load — a calculator's actual bug usually lives in
+    // its button handler. Auto-click the first 20 buttons as a best-effort smoke test so
+    // click-only bugs get a real chance to surface instead of only checking the idle page.
+    'function __smoke(){try{var b=document.querySelectorAll("button");for(var i=0;i<b.length&&i<20;i++){try{b[i].click();}catch(e){__e.push({message:"click on button #"+i+" threw: "+String((e&&e.message)||e)});}}}catch(e){}}' +
+    'window.addEventListener("load",function(){setTimeout(function(){__smoke();setTimeout(function(){try{parent.postMessage({__alaMonitor:true,errors:__e},"*");}catch(e){}},400);},300);});' +
     '})();<\/script>';
   if (/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i, m => m + monitor);
   if (/<html[^>]*>/i.test(html)) return html.replace(/<html[^>]*>/i, m => m + monitor);
@@ -792,8 +1030,8 @@ function renderPreview(html){
     let settled = false;
     let timer = setTimeout(function(){
       if (settled) return; settled = true; pendingPreviewResolve = null;
-      resolve({errors:[{message:"preview did not report back within 3s (page may be slow, blocked, or badly broken)"}], ready:false});
-    }, 3000);
+      resolve({errors:[{message:"preview did not report back within 4.5s (page may be slow, blocked, or badly broken)"}], ready:false});
+    }, 4500);
     pendingPreviewResolve = function(result){ if (settled) return; settled = true; clearTimeout(timer); resolve(result); };
     $("previewFrame").srcdoc = injectMonitor(html);
   });
@@ -807,6 +1045,86 @@ async function renderAndCheck(html, isDemo){
   const errCount = runtime.errors.length;
   statusEl.textContent = (isDemo ? "[DEMO] " : "") + "sanity: " + (sanity.valid ? "ok" : "FAILED — " + sanity.error) + " · runtime errors: " + errCount + (errCount ? " — " + runtime.errors.map(e=>e.message).join("; ") : "");
   return {parse_valid: sanity.valid, parse_error: sanity.error, runtime_errors: runtime.errors, rendered: runtime.ready};
+}
+
+/* ============================================================
+   SYSTEM CHECK — real tests of every subsystem, run on demand
+   before relying on the tool. Each check either genuinely
+   exercises the real code path (localStorage round-trip, the
+   actual iframe/postMessage pipeline, real API calls) or reports
+   real browser capability detection — never a canned pass.
+   ============================================================ */
+const SC_ICONS = {
+  pass: '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6.5"/><path d="M5.5 8.2l1.8 1.8 3.4-4"/></svg>',
+  fail: '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6.5"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5"/></svg>',
+  skip: '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6.5"/><path d="M5.5 8h5"/></svg>',
+};
+function scRender(checks){
+  $("systemCheckResults").innerHTML = checks.map(c => {
+    const color = c.status === "pass" ? "var(--good)" : c.status === "fail" ? "var(--bad)" : "var(--text-dim)";
+    return '<div class="check-row" style="color:' + color + '">' + SC_ICONS[c.status] + '<span><b>' + escapeHtml(c.name) + '</b> — ' + escapeHtml(c.detail) + '</span></div>';
+  }).join("");
+}
+async function runSystemCheck(){
+  const btn = $("systemCheckBtn"); btn.disabled = true;
+  const checks = [];
+  function add(name, status, detail){ checks.push({name, status, detail}); scRender(checks); }
+
+  add("DecompressionStream", typeof DecompressionStream !== "undefined" ? "pass" : "fail",
+    typeof DecompressionStream !== "undefined" ? "supported — docx/pptx/xlsx/zip extraction will work" : "NOT supported in this browser — Office/zip file extraction will fail");
+
+  add("DOMParser", typeof DOMParser !== "undefined" ? "pass" : "fail",
+    typeof DOMParser !== "undefined" ? "supported — Office XML parsing and HTML sanity checks will work" : "NOT supported — extraction and validation will fail");
+
+  add("FileReader", typeof FileReader !== "undefined" ? "pass" : "fail",
+    typeof FileReader !== "undefined" ? "supported — file uploads will work" : "NOT supported — uploads will fail");
+
+  try{
+    const k = "__ala_systemcheck__", v = "t" + Date.now();
+    localStorage.setItem(k, v);
+    const back = localStorage.getItem(k);
+    localStorage.removeItem(k);
+    add("localStorage read/write", back === v ? "pass" : "fail",
+      back === v ? "verified by writing a real value and reading it back" : "write did not persist — settings/keys/memory won't save (common on file:// pages or private browsing)");
+  }catch(e){
+    add("localStorage read/write", "fail", "threw an error: " + e.message);
+  }
+
+  try{
+    const testHtml = "<!DOCTYPE html><html><body><script>window.__x=1;<\/script></body></html>";
+    const result = await renderPreview(testHtml);
+    add("Sandboxed product execution", (result.ready && result.errors.length === 0) ? "pass" : "fail",
+      (result.ready && result.errors.length === 0) ? "a real throwaway page was executed and reported back cleanly — this is the exact pipeline Execute/Verify use" : "did not report back cleanly — " + (result.errors[0] ? result.errors[0].message : "unknown issue"));
+  }catch(e){
+    add("Sandboxed product execution", "fail", "threw an error: " + e.message);
+  }
+
+  const apiKey = getApiKey();
+  if (!apiKey){
+    add("Anthropic API key", "fail", "not set — live mode will not run");
+  } else if ($("verifyAnthropicOnCheck").checked){
+    try{
+      const text = await anthropicRawCall("Respond with exactly the word OK and nothing else.", "ping", 5);
+      add("Anthropic API key", /OK/i.test(text) ? "pass" : "fail",
+        /OK/i.test(text) ? "verified with a real API call" : "call succeeded but response was unexpected: " + truncate(text, 80));
+    }catch(e){
+      add("Anthropic API key", "fail", "real call failed — " + e.message);
+    }
+  } else {
+    add("Anthropic API key", "pass", "present, not verified this run — check the box above to also make a real (tiny, paid) verification call");
+  }
+
+  const ghToken = ($("ghToken").value || "").trim();
+  if (!ghToken){
+    add("GitHub token", "skip", "not set — fine if you don't need deploy; deploy will not work without one");
+  } else {
+    const r = await verifyGitHubToken();
+    add("GitHub token", (r && r.ok) ? "pass" : "fail", (r && r.ok) ? "verified as @" + r.login + " via a real GitHub API call" : "rejected or unreachable — see the connection status in the deploy panel");
+  }
+
+  btn.disabled = false;
+  const failCount = checks.filter(c => c.status === "fail").length;
+  showToast(failCount === 0 ? "System check passed — every tested module is working." : failCount + " check(s) failed — see details above.", failCount === 0 ? "good" : "bad");
 }
 
 function downloadProduct(){
@@ -972,11 +1290,19 @@ async function deployToGitHubPages(manual){
    ============================================================ */
 const MAX_TOTAL_UPLOAD_BYTES = 25 * 1024 * 1024;
 const MAX_PDF_BYTES = 15 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_EXTRACTED_CHARS_PER_FILE = 20000;
 const MAX_ATTACHED_CONTEXT_CHARS = 4000; // cap on what actually rides along in every phase prompt
 
+// The only 4 raster image formats Claude's API actually accepts for vision —
+// confirmed against Anthropic's current docs, not assumed. Anything else
+// image-like (BMP, TIFF, HEIC, etc.) is rejected with a real message rather
+// than silently failing or being sent as an unsupported type.
+const IMAGE_MEDIA_TYPES = {".jpg":"image/jpeg", ".jpeg":"image/jpeg", ".jfif":"image/jpeg", ".png":"image/png", ".gif":"image/gif", ".webp":"image/webp"};
+
 let attachedFiles = [];   // [{name,size,ext,status,note,extractedText}]
-let attachedPdfBlocks = []; // [{name, block:{type:"document",...}}]
+let attachedPdfBlocks = []; // raw {type:"document",...} content blocks
+let attachedImageBlocks = []; // raw {type:"image",...} content blocks
 let attachedContext = "";   // final distilled text injected into phase prompts
 
 function readUint32LE(dv, off){ return dv.getUint32(off, true); }
@@ -1097,7 +1423,7 @@ async function extractXlsx(buffer){
   }
   return {text: out.join("\n"), note: sheetNames.length + " sheet(s), first 200 rows each — formulas show as their last computed value"};
 }
-const TEXT_LIKE_EXT = [".txt",".csv",".md",".json",".xml",".log"];
+const TEXT_LIKE_EXT = [".txt",".csv",".md",".json",".xml",".log",".svg"];
 async function extractGenericZip(buffer){
   const {entries} = readZipEntries(buffer);
   let listing = entries.map(e => e.name + " (" + e.uncompressedSize + " bytes)").join("\n");
@@ -1129,6 +1455,54 @@ function renderFileList(){
 }
 function removeAttachedFile(i){ attachedFiles.splice(i, 1); renderFileList(); }
 
+/* existing-product upload — separate from the PDF/Office data_feed uploader
+   above; this one is specifically for loading a single-file HTML product
+   into the "existing product to enhance" textarea */
+$("existingSourceFile").addEventListener("change", (e) => {
+  const file = e.target.files && e.target.files[0];
+  const statusEl = $("existingSourceStatus");
+  if (!file){ return; }
+  const ext = fileExt(file.name);
+  if (ext !== ".html" && ext !== ".htm"){
+    statusEl.textContent = "rejected — " + file.name + " is not .html/.htm";
+    showToast("Only .html/.htm files can be uploaded here.", "bad");
+    e.target.value = "";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    $("existingSource").value = reader.result;
+    statusEl.textContent = "selected: " + file.name + " (" + (file.size/1024).toFixed(1) + " KB) — click \"process attachment\" to validate";
+    showToast("Loaded " + file.name + " into the textarea — not yet validated.", "warn");
+  };
+  reader.onerror = () => {
+    statusEl.textContent = "could not read " + file.name + " — " + (reader.error ? reader.error.message : "unknown error");
+    showToast("Could not read the file.", "bad");
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+});
+
+function processExistingSourceUpload(){
+  const statusEl = $("existingSourceStatus");
+  const content = $("existingSource").value;
+  if (!content.trim()){
+    statusEl.textContent = "nothing to validate — the field is empty";
+    showToast("Nothing to process — upload or paste something first.", "warn");
+    return;
+  }
+  // reuse the SAME sanity check the real product-generation pipeline uses —
+  // this is a genuine validation, not a scripted "always confirmed" message
+  const result = checkBasicSanity(content);
+  if (result.valid){
+    statusEl.textContent = "✓ validated — looks like well-formed HTML (" + (content.length/1024).toFixed(1) + " KB)";
+    showToast("Upload confirmed — looks like valid HTML.", "good");
+  } else {
+    statusEl.textContent = "✗ validation issue — " + result.error;
+    showToast("Validation issue: " + result.error, "bad");
+  }
+}
+
 $("fileInput").addEventListener("change", (e) => {
   const files = Array.from(e.target.files || []);
   const currentTotal = attachedFiles.reduce((a,f) => a + f.size, 0);
@@ -1140,12 +1514,16 @@ $("fileInput").addEventListener("change", (e) => {
   }
   for (const file of files){
     const ext = fileExt(file.name);
-    if ([".pdf",".docx",".pptx",".xlsx",".zip",".txt",".csv",".md",".json"].indexOf(ext) === -1){
-      showToast("Skipped " + file.name + " — unsupported type " + ext, "warn");
+    if ([".pdf",".jpg",".jpeg",".jfif",".png",".gif",".webp",".docx",".pptx",".xlsx",".zip",".txt",".csv",".md",".json",".svg"].indexOf(ext) === -1){
+      showToast("Skipped " + file.name + " — unsupported type " + ext + " (Claude's vision API only supports JPEG/PNG/GIF/WebP for images).", "warn");
       continue;
     }
     if (ext === ".pdf" && file.size > MAX_PDF_BYTES){
       showToast("Skipped " + file.name + " — PDFs over 15MB aren't supported here.", "bad");
+      continue;
+    }
+    if (IMAGE_MEDIA_TYPES[ext] && file.size > MAX_IMAGE_BYTES){
+      showToast("Skipped " + file.name + " — images over 10MB aren't supported here.", "bad");
       continue;
     }
     attachedFiles.push({name: file.name, size: file.size, ext, status: "pending", note: "not processed yet", _file: file});
@@ -1159,6 +1537,7 @@ async function processAttachments(){
   const btn = $("processAttachBtn"); btn.disabled = true;
   $("attachStatus").textContent = "processing…";
   attachedPdfBlocks = [];
+  attachedImageBlocks = [];
   let combinedOfficeText = "";
 
   for (const f of attachedFiles){
@@ -1174,6 +1553,16 @@ async function processAttachments(){
         const base64 = dataUrl.split(",")[1];
         attachedPdfBlocks.push({type:"document", source:{type:"base64", media_type:"application/pdf", data: base64}});
         f.status = "ok"; f.note = "queued for native PDF reading by Claude";
+      } else if (IMAGE_MEDIA_TYPES[f.ext]){
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error("could not read file"));
+          reader.readAsDataURL(f._file);
+        });
+        const base64 = dataUrl.split(",")[1];
+        attachedImageBlocks.push({type:"image", source:{type:"base64", media_type: IMAGE_MEDIA_TYPES[f.ext], data: base64}});
+        f.status = "ok"; f.note = "queued for native vision reading by Claude (" + IMAGE_MEDIA_TYPES[f.ext] + ")";
       } else {
         const buffer = await f._file.arrayBuffer();
         let result;
@@ -1181,7 +1570,7 @@ async function processAttachments(){
         else if (f.ext === ".pptx") result = await extractPptx(buffer);
         else if (f.ext === ".xlsx") result = await extractXlsx(buffer);
         else if (f.ext === ".zip") result = await extractGenericZip(buffer);
-        else result = {text: await f._file.text(), note: "plain text file, read directly"};
+        else result = {text: await f._file.text(), note: f.ext === ".svg" ? "SVG read as real XML/text markup, not rendered as an image" : "plain text file, read directly"};
         f.extractedText = result.text.slice(0, MAX_EXTRACTED_CHARS_PER_FILE);
         f.status = f.extractedText.trim() ? "ok" : "error";
         f.note = result.note + (f.extractedText.trim() ? "" : " — nothing extracted");
@@ -1195,8 +1584,9 @@ async function processAttachments(){
   }
 
   const hasPdf = attachedPdfBlocks.length > 0;
+  const hasImages = attachedImageBlocks.length > 0;
   const hasOfficeText = combinedOfficeText.trim().length > 0;
-  if (!hasPdf && !hasOfficeText){
+  if (!hasPdf && !hasImages && !hasOfficeText){
     attachedContext = "";
     $("attachStatus").textContent = "no usable content extracted from the current attachments";
     $("attachPreview").style.display = "none";
@@ -1205,9 +1595,9 @@ async function processAttachments(){
   }
 
   if (!getApiKey()){
-    // no key = no real Claude ingestion call; fall back to raw extracted text only (PDFs can't be read without a call)
+    // no key = no real Claude ingestion call; fall back to raw extracted text only (PDFs/images can't be read without a call)
     attachedContext = truncate(combinedOfficeText.trim(), MAX_ATTACHED_CONTEXT_CHARS);
-    $("attachStatus").textContent = "extracted " + combinedOfficeText.trim().length + " chars of Office text (no API key set, so PDFs were not read and no summary call was made)";
+    $("attachStatus").textContent = "extracted " + combinedOfficeText.trim().length + " chars of Office/text content (no API key set, so PDFs/images were not read and no summary call was made)";
     $("attachPreview").style.display = "block";
     $("attachPreview").textContent = attachedContext || "(nothing extracted)";
     btn.disabled = false;
@@ -1216,19 +1606,22 @@ async function processAttachments(){
 
   try{
     const goalHint = ($("goal").value || "").trim();
-    const system = "You are ingesting reference attachments for an autonomous build agent. Read the provided PDF(s) and/or extracted Office text and write concise, concrete notes on anything relevant to the stated goal — facts, requirements, numbers, structure. Do not pad with generic commentary. Plain text only, no markdown, under 500 words.";
-    const blocks = attachedPdfBlocks.slice();
-    if (hasOfficeText) blocks.push({type:"text", text: "Extracted text from Office/zip attachments:\n" + truncate(combinedOfficeText.trim(), 20000)});
+    const system = "You are ingesting reference attachments for an autonomous build agent. Read the provided PDF(s), image(s), and/or extracted Office/text content and write concise, concrete notes on anything relevant to the stated goal — facts, requirements, numbers, structure, visual details from images. Do not pad with generic commentary. Plain text only, no markdown, under 500 words.";
+    const blocks = attachedPdfBlocks.concat(attachedImageBlocks);
+    if (hasOfficeText) blocks.push({type:"text", text: "Extracted text from Office/zip/text attachments:\n" + truncate(combinedOfficeText.trim(), 20000)});
     blocks.push({type:"text", text: "Goal this is being ingested for: " + (goalHint || "(not specified yet)")});
     const summary = await anthropicMultimodalCall(system, blocks, 800);
     attachedContext = truncate(summary.trim(), MAX_ATTACHED_CONTEXT_CHARS);
-    $("attachStatus").textContent = "processed " + attachedFiles.length + " file(s) — " + (hasPdf ? attachedPdfBlocks.length + " PDF(s) read natively, " : "") + "summary below is what gets fed into Understand/Plan/Execute";
+    const parts = [];
+    if (hasPdf) parts.push(attachedPdfBlocks.length + " PDF(s)");
+    if (hasImages) parts.push(attachedImageBlocks.length + " image(s)");
+    $("attachStatus").textContent = "processed " + attachedFiles.length + " file(s)" + (parts.length ? " — " + parts.join(", ") + " read natively" : "") + " — summary below is what gets fed into Understand/Plan/Execute";
     $("attachPreview").style.display = "block";
     $("attachPreview").textContent = attachedContext;
     showToast("Attachments processed and summarized.", "good");
   }catch(err){
     attachedContext = truncate(combinedOfficeText.trim(), MAX_ATTACHED_CONTEXT_CHARS);
-    $("attachStatus").textContent = "summary call failed (" + err.message + ") — falling back to raw extracted Office text only, PDFs were not read";
+    $("attachStatus").textContent = "summary call failed (" + err.message + ") — falling back to raw extracted text only, PDFs/images were not read";
     $("attachPreview").style.display = "block";
     $("attachPreview").textContent = attachedContext || "(nothing extracted)";
     showToast("Attachment summary call failed — using raw extracted text instead.", "bad");
@@ -1237,7 +1630,7 @@ async function processAttachments(){
 }
 
 function clearAttachments(){
-  attachedFiles = []; attachedPdfBlocks = []; attachedContext = "";
+  attachedFiles = []; attachedPdfBlocks = []; attachedImageBlocks = []; attachedContext = "";
   renderFileList();
   $("attachStatus").textContent = "no attachments processed yet";
   $("attachPreview").style.display = "none"; $("attachPreview").textContent = "";
@@ -1292,7 +1685,7 @@ const liveProvider = {
     return await callLLM(system, user, 700);
   },
   async execute(plan, recall, priorLessons, existingSource, attachedCtx){
-    const baseSystem = 'You are Phase 4 (EXECUTE) of an autonomous agent. Build or enhance a REAL, runnable web product as ONE complete, self-contained HTML file (inline <style> and <script>, no build step; external CDN script tags only if truly necessary). If existing_product_source is provided, treat it as the current product and enhance/fix it — preserve what works. If recalled_failure_patterns are provided, they are real past debugging outcomes from earlier runs — actively avoid repeating them, don\'t just note them. If attached_reference_notes are provided, they are real content from user-uploaded files — use the actual facts/data in them, don\'t invent placeholder data instead. Keep it focused and reasonably concise. Do not include any explanation, apology, or clarifying question outside the two markers — if any requirement is ambiguous, make a reasonable assumption and build it anyway.';
+    const baseSystem = 'You are Phase 4 (EXECUTE) of an autonomous agent. Build or enhance a REAL, runnable web product as ONE complete, self-contained HTML file (inline <style> and <script>, no build step; external CDN script tags only if truly necessary). If existing_product_source is provided, treat it as the current product and enhance/fix it — preserve what works. If recalled_failure_patterns are provided, they are real past debugging outcomes from earlier runs — actively avoid repeating them, don\'t just note them. If attached_reference_notes are provided, they are real content from user-uploaded files — use the actual facts/data in them, don\'t invent placeholder data instead. Keep it focused and reasonably concise. Do not include any explanation, apology, or clarifying question outside the two markers — if any requirement is ambiguous, make a reasonable assumption and build it anyway. If you use a <form> element, its submit handler MUST call event.preventDefault() (or the form must have no real action target) — an un-prevented submit reloads the whole page and silently wipes all state the instant someone uses it for real, a bug that a sandboxed preview can hide but a real deployment cannot; when in doubt, prefer plain <button type="button"> with an onclick/addEventListener handler over a <form> for anything purely client-side.';
     const user = {
       plan, skill_guidance: recall.relevantSkills.map(s => s.desc), prior_attempt_lessons: priorLessons || [],
       recalled_failure_patterns: recall.hits.failure || [],
@@ -1322,7 +1715,10 @@ const liveProvider = {
         ? (result._raw.trim() ? "Model's raw reply: " + truncate(result._raw, 300) : "Model's reply was empty (zero characters of text).")
         : "";
       const meta = lastApiMeta ? " [stop_reason: " + lastApiMeta.stopReason + ", content blocks: " + lastApiMeta.contentBlockCount + " (" + lastApiMeta.contentTypes.join(",") + ")]" : "";
-      throw new Error("Execute did not return usable product_html after " + attempts + " attempt(s)." + meta + " " + rawInfo);
+      const thinkingHint = (lastApiMeta && lastApiMeta.stopReason === "max_tokens" && lastApiMeta.contentTypes.indexOf("thinking") !== -1 && lastApiMeta.contentTypes.indexOf("text") === -1)
+        ? " This specific pattern means the model spent its entire token budget on internal reasoning and never reached the actual output — extended thinking should now be sent as disabled on every call, so if this still happens, the model in use may not honor that field; try a larger max_tokens or a different model."
+        : "";
+      throw new Error("Execute did not return usable product_html after " + attempts + " attempt(s)." + meta + " " + rawInfo + thinkingHint);
     }
     const technical = await renderAndCheck(result.product_html, false);
     return {product_html: result.product_html, summary: result.summary || "", warnings: result.warnings || [], _technical: technical, _attempts: attempts};
@@ -1472,23 +1868,32 @@ function updateProgress(cycle, maxCycles, phaseIndex){
   fill.style.width = pct + "%";
   fill.className = "progress-fill" + (phaseIndex <= 5 ? " forward" : " learning");
   $("progressPct").textContent = pct + "%";
-  $("progressText").textContent = "cycle " + cycle + "/" + maxCycles + " — phase " + phaseIndex + "/10 (" + PHASE_NAMES[phaseIndex - 1] + ")";
+  const label = "cycle " + cycle + "/" + maxCycles + " — phase " + phaseIndex + "/10 (" + PHASE_NAMES[phaseIndex - 1] + ")";
+  $("progressText").textContent = label;
+  $("motionLabel").textContent = label.toLowerCase();
+  $("motionFill").style.width = pct + "%";
 }
 function setProgressDone(){
   const fill = $("progressFill"); fill.style.width = "100%"; fill.className = "progress-fill done";
   $("progressPct").textContent = "100%"; $("progressText").textContent = "released";
+  $("motionLabel").textContent = "build complete · released"; $("motionFill").style.width = "100%";
+  $("motionStage").classList.remove("running");
 }
 function setProgressError(msg){
   const fill = $("progressFill"); fill.className = "progress-fill error";
   $("progressText").textContent = "stopped — " + msg;
+  $("motionLabel").textContent = "stopped — " + msg;
+  $("motionStage").classList.remove("running");
 }
 function setProgressIdle(){
   const fill = $("progressFill"); fill.style.width = "0%"; fill.className = "progress-fill";
   $("progressPct").textContent = "0%"; $("progressText").textContent = "idle — no run yet";
+  $("motionLabel").textContent = "system idle · awaiting brief"; $("motionFill").style.width = "0%";
+  $("motionStage").classList.remove("running");
 }
 const OUTCOME_ICONS = {
-  pass: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" style="vertical-align:-2px;margin-right:6px;"><circle cx="8" cy="8" r="6.5"/><path d="M5.5 8.2l1.8 1.8 3.4-4"/></svg>',
-  fail: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" style="vertical-align:-2px;margin-right:6px;"><circle cx="8" cy="8" r="6.5"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5"/></svg>',
+  pass: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" style="vertical-align:-2px;margin-right:6px;"><circle cx="8" cy="8" r="6.5"/><path d="M5.5 8.2l1.8 1.8 3.4-4"/></svg>',
+  fail: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" style="vertical-align:-2px;margin-right:6px;"><circle cx="8" cy="8" r="6.5"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5"/></svg>',
 };
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function renderOutcome(report){
@@ -1515,9 +1920,10 @@ function updateModeBanner(mode){
   el.textContent = mode === "live" ? "LIVE — calling " + (($("modelInput").value||"").trim() || "claude-sonnet-5") + " for real" : "DEMO — scripted stub, no network calls, not real reasoning";
 }
 function setControlsDisabled(disabled){
-  ["goal","constraints","existingSource","maxCycles","threshold","forceFail","fastMode","runLiveBtn","runDemoBtn","resetBtn","apiKey","workspaceId","modelInput"].forEach(id => { $(id).disabled = disabled; });
+  ["goal","constraints","existingSource","maxCycles","maxPhasePerCycle","threshold","forceFail","fastMode","runLiveBtn","runDemoBtn","resetBtn","apiKey","workspaceId","modelInput"].forEach(id => { $(id).disabled = disabled; });
   $("status-dot").className = "dot" + (disabled ? " busy" : "");
   $("status-text").textContent = disabled ? "running" : "idle";
+  $("motionStage").classList.toggle("running", disabled);
 }
 
 /* ============================================================
@@ -1549,7 +1955,23 @@ async function runAgent(mode){
 
   const goal = $("goal").value.trim() || "Build a small useful web tool";
   const constraints = $("constraints").value.split(",").map(s => s.trim()).filter(Boolean);
-  const maxCycles = clamp(parseInt($("maxCycles").value, 10) || 2, 1, 5);
+  const parsedCycles = parseInt($("maxCycles").value, 10);
+  const requestedCycles = Number.isNaN(parsedCycles) ? 2 : parsedCycles; // don't use "|| 2" here — 0 is a legitimate (if useless) input and is falsy, which would silently substitute the default instead of actually clamping it
+  const MAX_CYCLES_CAP = 20;
+  const maxCycles = clamp(requestedCycles, 1, MAX_CYCLES_CAP);
+  if (requestedCycles !== maxCycles){
+    log("you entered " + requestedCycles + " cycles — capped to " + maxCycles + " (hard limit, to bound API cost/runtime; not silent, this is the only adjustment made).", "warn");
+    showToast("Cycle count capped at " + MAX_CYCLES_CAP + " — you entered " + requestedCycles + ".", "warn");
+    $("maxCycles").value = maxCycles;
+  }
+  const parsedPhase = parseInt($("maxPhasePerCycle").value, 10);
+  const requestedPhase = Number.isNaN(parsedPhase) ? 10 : parsedPhase;
+  const maxPhasePerCycle = clamp(requestedPhase, 5, 10);
+  if (requestedPhase !== maxPhasePerCycle){
+    log("you entered " + requestedPhase + " for max phase per cycle — clamped to " + maxPhasePerCycle + " (valid range is 5–10; phases 1–5 always run in full).", "warn");
+    showToast("Max phase per cycle clamped to " + maxPhasePerCycle + " (valid range 5–10).", "warn");
+    $("maxPhasePerCycle").value = maxPhasePerCycle;
+  }
   const threshold = parseInt($("threshold").value, 10);
   const fast = $("fastMode").checked;
   const demoDelay = fast ? 60 : 380;
@@ -1624,23 +2046,31 @@ async function runAgent(mode){
 
     setNodeState("node-gate", "fail"); $("branch-fail").classList.add("lit-fail"); await sleep(shortDelay);
 
-    let reflection, learning, experiment, evolution;
+    let reflection = null, learning = null, experiment = null, evolution = null;
+    if (maxPhasePerCycle < 6){
+      log("max phase per cycle is 5 — learning arc (phases 6-10) skipped entirely for this cycle.", "warn");
+    }
     try{
-      // real debugging retrieval: search failure memory using the actual captured
-      // error text as the query, not just "whatever failed most recently"
-      const errorQuery = (verification.defects || []).join(" ") + " " + ((execution._technical && execution._technical.runtime_errors) || []).map(e => e.message).join(" ");
-      const knownPatterns = errorQuery.trim() ? searchMemory("failure", errorQuery, 5) : memory.failure.slice(-5);
-      reflection = await runPhaseNode(6, () => mode==="demo" ? sleep(demoDelay).then(()=>provider.reflect(verification, execution, knownPatterns, cycle)) : provider.reflect(verification, execution, knownPatterns));
-      logPhase("reflect", "6 · REFLECT", reflection);
-
-      learning = await runPhaseNode(7, () => mode==="demo" ? sleep(demoDelay).then(()=>provider.learn(verification, reflection)) : provider.learn(verification, reflection));
-      logPhase("learn", "7 · LEARN", learning);
-
-      experiment = await runPhaseNode(8, () => mode==="demo" ? sleep(demoDelay).then(()=>provider.experiment(learning, plan, execution)) : provider.experiment(learning, plan, execution));
-      logPhase("experiment", "8 · EXPERIMENT", experiment);
-
-      evolution = await runPhaseNode(9, () => mode==="demo" ? sleep(demoDelay).then(()=>provider.evolve(experiment)) : provider.evolve(experiment));
-      logPhase("evolve", "9 · EVOLVE", evolution);
+      if (maxPhasePerCycle >= 6){
+        // real debugging retrieval: search failure memory using the actual captured
+        // error text as the query, not just "whatever failed most recently"
+        const errorQuery = (verification.defects || []).join(" ") + " " + ((execution._technical && execution._technical.runtime_errors) || []).map(e => e.message).join(" ");
+        const knownPatterns = errorQuery.trim() ? searchMemory("failure", errorQuery, 5) : memory.failure.slice(-5);
+        reflection = await runPhaseNode(6, () => mode==="demo" ? sleep(demoDelay).then(()=>provider.reflect(verification, execution, knownPatterns, cycle)) : provider.reflect(verification, execution, knownPatterns));
+        logPhase("reflect", "6 · REFLECT", reflection);
+      }
+      if (maxPhasePerCycle >= 7 && reflection){
+        learning = await runPhaseNode(7, () => mode==="demo" ? sleep(demoDelay).then(()=>provider.learn(verification, reflection)) : provider.learn(verification, reflection));
+        logPhase("learn", "7 · LEARN", learning);
+      }
+      if (maxPhasePerCycle >= 8 && learning){
+        experiment = await runPhaseNode(8, () => mode==="demo" ? sleep(demoDelay).then(()=>provider.experiment(learning, plan, execution)) : provider.experiment(learning, plan, execution));
+        logPhase("experiment", "8 · EXPERIMENT", experiment);
+      }
+      if (maxPhasePerCycle >= 9 && experiment){
+        evolution = await runPhaseNode(9, () => mode==="demo" ? sleep(demoDelay).then(()=>provider.evolve(experiment)) : provider.evolve(experiment));
+        logPhase("evolve", "9 · EVOLVE", evolution);
+      }
     }catch(err){
       log("ERROR — " + err.message, "bad");
       finalReport = {status:"ERROR", message: err.message, mode};
@@ -1649,24 +2079,32 @@ async function runAgent(mode){
       break;
     }
 
-    if (evolution.confirmed){ version = bumpVersion(version); $("version-badge").textContent = version; saveVersion(); }
+    if (evolution && evolution.confirmed){ version = bumpVersion(version); $("version-badge").textContent = version; saveVersion(); }
 
-    const classification = MEM_TYPES.indexOf(learning.classification) !== -1 ? learning.classification : "knowledge";
-    await runPhaseNode(10, async () => {
-      memory.failure.push(makeEntry(Object.assign({}, reflection, {mode})));
-      memory[classification].push(makeEntry(Object.assign({}, learning, {mode})));
-      memory.episodic.push(makeEntry({status:"EVOLVING", cycle, goal, mode}));
-      saveMemory();
-      return {persisted_to: ["failure", classification, "episodic"], version};
-    });
-    logPhase("remember", "10 · REMEMBER", {persisted_to: ["failure", classification, "episodic"], version});
-    renderMemory();
+    if (maxPhasePerCycle >= 10 && reflection && learning){
+      const classification = MEM_TYPES.indexOf(learning.classification) !== -1 ? learning.classification : "knowledge";
+      await runPhaseNode(10, async () => {
+        memory.failure.push(makeEntry(Object.assign({}, reflection, {mode})));
+        memory[classification].push(makeEntry(Object.assign({}, learning, {mode})));
+        memory.episodic.push(makeEntry({status:"EVOLVING", cycle, goal, mode}));
+        saveMemory();
+        return {persisted_to: ["failure", classification, "episodic"], version};
+      });
+      logPhase("remember", "10 · REMEMBER", {persisted_to: ["failure", classification, "episodic"], version});
+      renderMemory();
+    } else if (maxPhasePerCycle < 10 && (reflection || learning)){
+      log("skipped Remember (phase 10) — max phase per cycle is " + maxPhasePerCycle + ", nothing from this cycle was persisted to memory.", "warn");
+    }
 
-    priorLessons.push({from_cycle: cycle, lesson: learning.lesson, corrective_strategy: reflection.corrective_strategy});
+    if (reflection && learning){
+      priorLessons.push({from_cycle: cycle, lesson: learning.lesson, corrective_strategy: reflection.corrective_strategy});
+    } else if (reflection){
+      priorLessons.push({from_cycle: cycle, lesson: "(learn step skipped — max phase per cycle limit)", corrective_strategy: reflection.corrective_strategy});
+    }
     workingSource = execution.product_html; // next cycle enhances THIS attempt, not the pristine original
 
     $("branch-loop").classList.add("lit-loop");
-    log("no release yet — looping back to Phase 1 (agent now " + version + ")", "warn");
+    log("no release yet — looping back to Phase 1 (agent now " + version + ")" + (maxPhasePerCycle < 10 ? " [learning arc capped at phase " + maxPhasePerCycle + "]" : ""), "warn");
     if (mode === "demo") await sleep(demoDelay);
   }
 
@@ -1703,6 +2141,7 @@ function resetAll(){
    INIT
    ============================================================ */
 $("threshold").addEventListener("input", () => { $("threshold-val").textContent = $("threshold").value; });
+loadSettings();
 loadApiKey();
 loadGhToken();
 if (($("ghToken").value || "").trim()) verifyGitHubToken();
@@ -1714,6 +2153,7 @@ buildSkillsGrid();
 renderMemory();
 const restoredCount = MEM_TYPES.reduce((a,k) => a + memory[k].length, 0);
 if (restoredCount > 0) log("restored " + restoredCount + " memory entries from a previous session (this browser).", "meta");
+lucide.createIcons();
 </script>
 </body>
 </html>
